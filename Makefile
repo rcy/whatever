@@ -1,5 +1,5 @@
 start:
-	APPDIR=/tmp air
+	WHATEVER_ENV= air
 
 test:
 	go test ./...
