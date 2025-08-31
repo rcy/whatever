@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -37,8 +38,20 @@ func (c *Context) GetAggregateID(prefix string) (string, error) {
 }
 
 var CLI struct {
-	Notes  NotesCmd  `cmd:""`
-	Events EventsCmd `cmd:""`
-	Ddate  DDateCmd  `cmd:""`
-	Debug  DebugCmd  `cmd:""`
+	Version VersionCmd `cmd:""`
+	Notes   NotesCmd   `cmd:""`
+	Events  EventsCmd  `cmd:""`
+	Ddate   DDateCmd   `cmd:""`
+	Debug   DebugCmd   `cmd:""`
+}
+
+type VersionCmd struct{}
+
+func (c *VersionCmd) Run() error {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		fmt.Println(info.Main.Version)
+	} else {
+		fmt.Println("unknown")
+	}
+	return nil
 }
