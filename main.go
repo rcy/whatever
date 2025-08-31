@@ -31,7 +31,7 @@ func appDataFile(appName string, filename string) (string, error) {
 }
 
 func main() {
-	dbFile, err := appDataFile("whatever", "data.sqlite")
+	dbFile, err := appDataFile("whatever-cli", "data.sqlite")
 	if err != nil {
 		log.Fatal(err)
 	}
