@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	_ "modernc.org/sqlite"
 
@@ -14,6 +15,10 @@ import (
 )
 
 func appDataFile(appName string, filename string) (string, error) {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version == "(devel)" {
+		appName += "-devel"
+	}
+
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
