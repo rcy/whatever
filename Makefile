@@ -1,5 +1,5 @@
 start:
-	WHATEVER_ENV= air
+	WHATEVER_ENV=dev air
 
 test:
 	go test ./...

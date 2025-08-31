@@ -6,7 +6,7 @@ import (
 )
 
 func IsRelease() bool {
-	return os.Getenv("WHATEVER_ENV") == "dev"
+	return os.Getenv("WHATEVER_ENV") != "dev"
 }
 
 // Version returns the raw version string reported by Go.
