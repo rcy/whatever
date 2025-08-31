@@ -2,11 +2,21 @@ package version
 
 import (
 	"os"
+	"regexp"
 	"runtime/debug"
 )
 
+var semver = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
+
 func IsRelease() bool {
-	return os.Getenv("WHATEVER_ENV") != "dev"
+	if os.Getenv("WHATEVER_ENV") == "dev" {
+		return false
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return false
+	}
+	return semver.MatchString(info.Main.Version)
 }
 
 // Version returns the raw version string reported by Go.
