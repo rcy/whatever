@@ -1,23 +1,17 @@
 package commands
 
 import (
-	"crypto/rand"
 	"fmt"
 
 	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/ids"
 )
-
-func makeID() string {
-	src := make([]byte, 20)
-	_, _ = rand.Read(src)
-	return fmt.Sprintf("%x", src)
-}
 
 type IDCmd struct {
 	Aggregate string `arg:"" default:"note"`
 }
 
 func (c *IDCmd) Run(s *service.Service) error {
-	fmt.Println(makeID())
+	fmt.Println(ids.New())
 	return nil
 }

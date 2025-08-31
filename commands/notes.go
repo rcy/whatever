@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/ids"
 	"github.com/rcy/whatever/models"
 )
 
@@ -84,7 +85,7 @@ func (c *AddCmd) Run(s *service.Service) error {
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	_, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, makeID(), "note", "NoteCreated", string(bytes))
+	_, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, ids.New(), "note", "NoteCreated", string(bytes))
 	if err != nil {
 		return fmt.Errorf("db.Exec: %w", err)
 	}
