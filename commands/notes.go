@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/models"
 )
 
 type NotesCmd struct {
@@ -27,7 +28,7 @@ func (c *ListCmd) Run(s *service.Service) error {
 		deleted bool
 	}
 	notes := make(map[id]note)
-	var events []Event
+	var events []models.Event
 	err := s.DB.Select(&events, `select * from events where aggregate_type = 'note' order by created_at asc`)
 	if err != nil {
 		return fmt.Errorf("Select events: %w", err)

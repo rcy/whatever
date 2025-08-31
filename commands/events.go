@@ -6,23 +6,15 @@ import (
 	"time"
 
 	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/models"
 )
 
 type EventsCmd struct {
 	ID string
 }
 
-type Event struct {
-	EventID       int       `db:"event_id"`
-	CreatedAt     time.Time `db:"created_at"`
-	AggregateType string    `db:"aggregate_type"`
-	AggregateID   string    `db:"aggregate_id"`
-	EventType     string    `db:"event_type"`
-	EventData     []byte    `db:"event_data"`
-}
-
 func (c *EventsCmd) Run(s *service.Service) error {
-	var events []Event
+	var events []models.Event
 	if c.ID != "" {
 		aggID, err := s.GetAggregateID(strings.ToLower(c.ID))
 		if err != nil {
