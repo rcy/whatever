@@ -7,6 +7,7 @@ toolchain go1.24.6
 require (
 	github.com/alecthomas/kong v1.12.1
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/rcy/disco v0.2.2
 	modernc.org/sqlite v1.38.2
 )
 
