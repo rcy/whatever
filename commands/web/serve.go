@@ -21,7 +21,7 @@ func (c *ServeCmd) Run(s *service.Service) error {
 	r.Use(middleware.Logger)
 	svc := webservice{Service: *s}
 	r.Get("/", svc.index)
-	fmt.Println("listening on port", c.Port)
+	fmt.Printf("listening on http://localhost:%s\n", c.Port)
 	return http.ListenAndServe(":"+c.Port, r)
 }
 
