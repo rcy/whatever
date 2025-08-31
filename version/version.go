@@ -2,23 +2,11 @@ package version
 
 import (
 	"os"
-	"regexp"
 	"runtime/debug"
 )
 
-var semver = regexp.MustCompile(`^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
-
-// IsRelease returns true if the binary looks like it was built from a semver tag
-// (e.g. "v1.2.3"), false if it's "(devel)" or a pseudo-version.
 func IsRelease() bool {
-	if os.Getenv("WHATEVER_ENV") == "dev" {
-		return false
-	}
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return false
-	}
-	return semver.MatchString(info.Main.Version)
+	return os.Getenv("WHATEVER_ENV") == "dev"
 }
 
 // Version returns the raw version string reported by Go.
