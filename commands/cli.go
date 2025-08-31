@@ -37,7 +37,7 @@ func (c *Context) GetAggregateID(prefix string) (string, error) {
 }
 
 var CLI struct {
-	Notes  NotesCmd    `cmd:""`
-	Events EventsCmd   `cmd:""`
-	Debug  InternalCmd `cmd:""`
+	Notes  NotesCmd  `cmd:""`
+	Events EventsCmd `cmd:""`
+	Debug  DebugCmd  `cmd:""`
 }
