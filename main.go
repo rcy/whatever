@@ -12,6 +12,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/jmoiron/sqlx"
 	"github.com/rcy/whatever/commands"
+	"github.com/rcy/whatever/commands/service"
 )
 
 func appDataFile(appName string, filename string) (string, error) {
@@ -75,7 +76,7 @@ func main() {
 
 	sqlxDB := sqlx.NewDb(db, "sqlite3")
 
-	ktx := kong.Parse(&commands.CLI)
-	err = ktx.Run(&commands.Context{DB: sqlxDB, DBFile: dbFile})
-	ktx.FatalIfErrorf(err)
+	kctx := kong.Parse(&commands.CLI)
+	err = kctx.Run(&service.Service{DB: sqlxDB, DBFile: dbFile})
+	kctx.FatalIfErrorf(err)
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/rcy/whatever/commands/service"
 )
 
 type EventsCmd struct {
@@ -19,20 +21,20 @@ type Event struct {
 	EventData     []byte    `db:"event_data"`
 }
 
-func (c *EventsCmd) Run(ctx *Context) error {
+func (c *EventsCmd) Run(s *service.Service) error {
 	var events []Event
 	if c.ID != "" {
-		aggID, err := ctx.GetAggregateID(strings.ToLower(c.ID))
+		aggID, err := s.GetAggregateID(strings.ToLower(c.ID))
 		if err != nil {
 			return err
 		}
-		err = ctx.DB.Select(&events, `select * from events where aggregate_id = ? order by event_id `, aggID)
+		err = s.DB.Select(&events, `select * from events where aggregate_id = ? order by event_id `, aggID)
 		if err != nil {
 			return err
 		}
 	} else {
 
-		err := ctx.DB.Select(&events, `select * from events order by event_id`)
+		err := s.DB.Select(&events, `select * from events order by event_id`)
 		if err != nil {
 			return fmt.Errorf("Select: %w", err)
 		}

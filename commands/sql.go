@@ -1,11 +1,15 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/rcy/whatever/commands/service"
+)
 
 type SQLCmd struct {
 }
 
-func (c *SQLCmd) Run(ctx *Context) error {
-	fmt.Printf("sqlite3 '%s'\n", ctx.DBFile)
+func (c *SQLCmd) Run(s *service.Service) error {
+	fmt.Printf("sqlite3 '%s'\n", s.DBFile)
 	return nil
 }
