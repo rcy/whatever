@@ -4,7 +4,7 @@ start:
 test:
 	go test ./...
 
-tag := $(shell cat ./VERSION)
+tag := $(shell cat ./.version)
 
 tag:
 	git diff-index --quiet HEAD -- # stop if tree is not clean
