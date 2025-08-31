@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 
 	_ "modernc.org/sqlite"
 
@@ -13,10 +12,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/version"
 )
 
 func appDataFile(appName string, filename string) (string, error) {
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version == "(devel)" {
+	if !version.IsRelease() {
 		appName += "-devel"
 	}
 

@@ -1,3 +1,6 @@
+start:
+	APPDIR=/tmp air
+
 test:
 	go test ./...
 
