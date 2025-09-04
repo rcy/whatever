@@ -63,6 +63,15 @@ func (s *Service) GetAggregateID(prefix string) (string, error) {
 	return aggIDs[0], nil
 }
 
+func (s *Service) LoadAggregateEvents(aggregateID string) ([]Model, error) {
+	var events []Model
+	err := s.DBTodo.Select(&events, `select * from events where aggregate_id = ? order by event_id asc`, aggregateID)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
 func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
@@ -117,4 +126,10 @@ func (s *Service) ReplayEvents() error {
 		}
 	}
 	return nil
+}
+
+func UnmarshalPayload[T any](event Model) (T, error) {
+	var payload T
+	err := json.Unmarshal([]byte(event.EventData), &payload)
+	return payload, err
 }

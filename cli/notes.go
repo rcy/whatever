@@ -43,7 +43,8 @@ type AddCmd struct {
 }
 
 func (c *AddCmd) Run(app *app.Service) error {
-	_, err := app.CS.CreateNote(strings.Join(c.Text, " "))
+	aggID, err := app.CS.CreateNote(strings.Join(c.Text, " "))
+	fmt.Println(aggID)
 	return err
 }
 
