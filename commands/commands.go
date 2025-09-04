@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/ids"
 )
@@ -14,15 +17,12 @@ func New(es *events.Service) *Service {
 }
 
 func (s *Service) CreateNote(text string) (string, error) {
-	payload := struct {
-		Text string
-	}{
-		Text: text,
-	}
-
 	aggID := ids.New()
-
-	err := s.ES.InsertEvent("NoteCreated", "note", aggID, payload)
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("text cannot be empty")
+	}
+	err := s.ES.InsertEvent("NoteCreated", "note", aggID, events.NoteCreatedPayload{Text: text})
 	if err != nil {
 		return "", err
 	}

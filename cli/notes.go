@@ -1,12 +1,11 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/models"
 )
 
 type NotesCmd struct {
@@ -22,47 +21,18 @@ type ListCmd struct {
 }
 
 func (c *ListCmd) Run(app *app.Service) error {
-	type id string
 	type note struct {
-		text    string
-		deleted bool
+		ID   string    `db:"id"`
+		Text string    `db:"text"`
+		Ts   time.Time `db:"ts"`
 	}
-	notes := make(map[id]note)
-	var events []models.Event
-	err := app.ES.DBTodo.Select(&events, `select * from events where aggregate_type = 'note' order by created_at asc`)
+	var notes []note
+	err := app.ES.DBTodo.Select(&notes, `select * from notes order by ts asc`)
 	if err != nil {
-		return fmt.Errorf("Select events: %w", err)
+		return fmt.Errorf("Select notes: %w", err)
 	}
-	for _, event := range events {
-		switch event.EventType {
-		case "NoteCreated":
-			payload := struct{ Text string }{}
-			err := json.Unmarshal(event.EventData, &payload)
-			if err != nil {
-				return fmt.Errorf("Unmarshal: %w", err)
-			}
-			notes[id(event.AggregateID)] = note{text: payload.Text}
-		case "NoteDeleted":
-			note, ok := notes[id(event.AggregateID)]
-			if ok {
-				note.deleted = true
-				notes[id(event.AggregateID)] = note
-			}
-		case "NoteUndeleted":
-			note, ok := notes[id(event.AggregateID)]
-			if ok {
-				note.deleted = false
-				notes[id(event.AggregateID)] = note
-			}
-		default:
-			return fmt.Errorf("unhandled event.EventType: %s", event.EventType)
-		}
-	}
-
-	for id, note := range notes {
-		if c.Deleted && note.deleted || !c.Deleted && !note.deleted {
-			fmt.Printf("%s %s\n", id[0:7], note.text)
-		}
+	for _, note := range notes {
+		fmt.Printf("%s %s %s\n", note.ID[0:7], note.Ts.Local().Format(time.DateTime), note.Text)
 	}
 
 	return nil

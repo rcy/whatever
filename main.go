@@ -62,7 +62,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Example schema
 	if _, err := db.Exec(`
 		create table if not exists events (
 			event_id integer primary key autoincrement,
@@ -80,7 +79,7 @@ func main() {
 
 	kctx := kong.Parse(&cli.CLI)
 
-	es := &events.Service{DBTodo: sqlxDB, DBFile: dbFile}
+	es := events.New(sqlxDB, dbFile)
 	as := app.New(commands.New(es), es)
 
 	err = kctx.Run(as)
