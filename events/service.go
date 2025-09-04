@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -23,7 +24,7 @@ func (s *Service) GetAggregateIDs(prefix string) ([]string, error) {
 }
 
 func (s *Service) GetAggregateID(prefix string) (string, error) {
-	aggIDs, err := s.GetAggregateIDs(prefix)
+	aggIDs, err := s.GetAggregateIDs(strings.ToLower(prefix))
 	if err != nil {
 		return "", fmt.Errorf("GetAggregateID: %w", err)
 	}

@@ -132,7 +132,7 @@ type DeleteCmd struct {
 }
 
 func (c *DeleteCmd) Run(app *app.Service) error {
-	aggID, err := app.ES.GetAggregateID(strings.ToLower(c.ID))
+	aggID, err := app.ES.GetAggregateID(c.ID)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ type UndeleteCmd struct {
 }
 
 func (c *UndeleteCmd) Run(app *app.Service) error {
-	aggID, err := app.ES.GetAggregateID(strings.ToLower(c.ID))
+	aggID, err := app.ES.GetAggregateID(c.ID)
 	if err != nil {
 		return err
 	}

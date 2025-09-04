@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"strings"
-
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/ids"
 )
@@ -32,7 +30,7 @@ func (s *Service) CreateNote(text string) (string, error) {
 }
 
 func (s *Service) DeleteNote(id string) error {
-	aggID, err := s.ES.GetAggregateID(strings.ToLower(id))
+	aggID, err := s.ES.GetAggregateID(id)
 	if err != nil {
 		return err
 	}
@@ -41,7 +39,7 @@ func (s *Service) DeleteNote(id string) error {
 }
 
 func (s *Service) UndeleteNote(id string) error {
-	aggID, err := s.ES.GetAggregateID(strings.ToLower(id))
+	aggID, err := s.ES.GetAggregateID(id)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/rcy/whatever/app"
@@ -16,7 +15,7 @@ type EventsCmd struct {
 func (c *EventsCmd) Run(app *app.Service) error {
 	var events []models.Event
 	if c.ID != "" {
-		aggID, err := app.ES.GetAggregateID(strings.ToLower(c.ID))
+		aggID, err := app.ES.GetAggregateID(c.ID)
 		if err != nil {
 			return err
 		}
