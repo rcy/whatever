@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/models"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -16,22 +16,43 @@ type ServeCmd struct {
 	Port string `default:"9999"`
 }
 
-func (c *ServeCmd) Run(s *service.Service) error {
+func (c *ServeCmd) Run(es *events.Service) error {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	svc := webservice{Service: *s}
-	r.Get("/", svc.index)
+	svc := webservice{ES: *es}
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/notes", http.StatusSeeOther)
+	})
+	r.Get("/notes", svc.notesHandler)
+	r.Post("/notes", svc.postNotesHandler)
+	r.Get("/events", svc.eventsHandler)
 	fmt.Printf("listening on http://localhost:%s\n", c.Port)
 	return http.ListenAndServe(":"+c.Port, r)
 }
 
 type webservice struct {
-	service.Service
+	ES events.Service
 }
 
-func (s *webservice) index(w http.ResponseWriter, r *http.Request) {
+func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
+	h.HTML(
+		h.Body(
+			h.H1(g.Text("whatever")),
+			h.Form(h.Action("/notes"), h.Method("post"),
+				h.Input(h.AutoFocus()),
+			),
+		),
+	).Render(w)
+}
+
+func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
+
+	http.Redirect(w, r, "/notes", http.StatusSeeOther)
+}
+
+func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	var events []models.Event
-	err := s.DB.Select(&events, `select * from events order by event_id desc`)
+	err := s.ES.DBTodo.Select(&events, `select * from events order by event_id desc`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

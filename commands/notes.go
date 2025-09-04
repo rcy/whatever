@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/ids"
 	"github.com/rcy/whatever/models"
 )
@@ -22,7 +22,7 @@ type ListCmd struct {
 	Deleted bool `help:"Show deleted notes"`
 }
 
-func (c *ListCmd) Run(s *service.Service) error {
+func (c *ListCmd) Run(es *events.Service) error {
 	type id string
 	type note struct {
 		text    string
@@ -30,7 +30,7 @@ func (c *ListCmd) Run(s *service.Service) error {
 	}
 	notes := make(map[id]note)
 	var events []models.Event
-	err := s.DB.Select(&events, `select * from events where aggregate_type = 'note' order by created_at asc`)
+	err := es.DBTodo.Select(&events, `select * from events where aggregate_type = 'note' order by created_at asc`)
 	if err != nil {
 		return fmt.Errorf("Select events: %w", err)
 	}
@@ -73,22 +73,27 @@ type AddCmd struct {
 	Text []string `arg:""`
 }
 
-func (c *AddCmd) Run(s *service.Service) error {
+func (c *AddCmd) Run(es *events.Service) error {
 	payload := struct {
 		Text string
 	}{
 		Text: strings.Join(c.Text, " "),
 	}
 
-	bytes, err := json.Marshal(payload)
+	err := es.InsertEvent("NoteCreated", "note", ids.New(), payload)
 	if err != nil {
-		return fmt.Errorf("json.Marshal: %w", err)
+		return err
 	}
 
-	_, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, ids.New(), "note", "NoteCreated", string(bytes))
-	if err != nil {
-		return fmt.Errorf("db.Exec: %w", err)
-	}
+	// bytes, err := json.Marshal(payload)
+	// if err != nil {
+	// 	return fmt.Errorf("json.Marshal: %w", err)
+	// }
+
+	// _, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, ids.New(), "note", "NoteCreated", string(bytes))
+	// if err != nil {
+	// 	return fmt.Errorf("db.Exec: %w", err)
+	// }
 
 	return nil
 }
@@ -97,16 +102,21 @@ type DeleteCmd struct {
 	ID string `arg:""`
 }
 
-func (c *DeleteCmd) Run(s *service.Service) error {
-	aggID, err := s.GetAggregateID(strings.ToLower(c.ID))
+func (c *DeleteCmd) Run(es *events.Service) error {
+	aggID, err := es.GetAggregateID(strings.ToLower(c.ID))
 	if err != nil {
 		return err
 	}
 
-	_, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "note", "NoteDeleted", "{}")
+	err = es.InsertEvent("NoteDeleted", "note", aggID, nil)
 	if err != nil {
-		return fmt.Errorf("db.Exec: %w", err)
+		return err
 	}
+
+	// _, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "note", "NoteDeleted", "{}")
+	// if err != nil {
+	// 	return fmt.Errorf("db.Exec: %w", err)
+	// }
 
 	return nil
 }
@@ -115,16 +125,20 @@ type UndeleteCmd struct {
 	ID string `arg:""`
 }
 
-func (c *UndeleteCmd) Run(s *service.Service) error {
-	aggID, err := s.GetAggregateID(strings.ToLower(c.ID))
+func (c *UndeleteCmd) Run(es *events.Service) error {
+	aggID, err := es.GetAggregateID(strings.ToLower(c.ID))
 	if err != nil {
 		return err
 	}
 
-	_, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "note", "NoteUndeleted", "{}")
+	err = es.InsertEvent("NoteUndeleted", "note", aggID, nil)
 	if err != nil {
-		return fmt.Errorf("db.Exec: %w", err)
+		return err
 	}
+	// _, err = s.DB.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "note", "NoteUndeleted", "{}")
+	// if err != nil {
+	// 	return fmt.Errorf("db.Exec: %w", err)
+	// }
 
 	return nil
 }

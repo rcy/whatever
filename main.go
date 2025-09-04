@@ -11,7 +11,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/jmoiron/sqlx"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/commands/service"
+	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/version"
 )
 
@@ -77,6 +77,6 @@ func main() {
 	sqlxDB := sqlx.NewDb(db, "sqlite3")
 
 	kctx := kong.Parse(&commands.CLI)
-	err = kctx.Run(&service.Service{DB: sqlxDB, DBFile: dbFile})
+	err = kctx.Run(&events.Service{DBTodo: sqlxDB, DBFile: dbFile})
 	kctx.FatalIfErrorf(err)
 }
