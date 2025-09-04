@@ -1,6 +1,7 @@
 package events
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -32,7 +33,16 @@ func New(db *sqlx.DB, dbFile string) *Service {
 	}
 }
 
-type HandlerFunc func(e sqlx.Execer, event Model) error
+type EventInserter interface {
+	InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error
+}
+
+type ExecGetter interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Get(dest interface{}, query string, args ...interface{}) error
+}
+
+type HandlerFunc func(i EventInserter, event Model, replay bool) error
 
 func (s *Service) RegisterHandler(eventType string, handler HandlerFunc) {
 	s.handlers[eventType] = append(s.handlers[eventType], handler)
@@ -72,20 +82,14 @@ func (s *Service) LoadAggregateEvents(aggregateID string) ([]Model, error) {
 	return events, nil
 }
 
-func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
+func (s *Service) InsertEventTx(e ExecGetter, eventType string, aggregateType string, aggregateID string, payload any) error {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	tx, err := s.DBTodo.Beginx()
-	if err != nil {
-		return fmt.Errorf("Begin: %w", err)
-	}
-	defer tx.Rollback()
-
 	var event Model
-	err = tx.Get(&event, `insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?) returning *`,
+	err = e.Get(&event, `insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?) returning *`,
 		aggregateID,
 		aggregateType,
 		eventType, string(bytes))
@@ -93,18 +97,43 @@ func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateI
 		return fmt.Errorf("db.Exec: %w", err)
 	}
 
-	err = s.runEventHandlers(tx, event)
+	err = s.runEventHandlers(e, event, false)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
+	tx, err := s.DBTodo.Beginx()
+	if err != nil {
+		return fmt.Errorf("Begin: %w", err)
+	}
+	defer tx.Rollback()
+
+	err = s.InsertEventTx(tx, eventType, aggregateType, aggregateID, payload)
+	if err != nil {
+		return fmt.Errorf("InsertEventTx: %w", err)
 	}
 
 	return tx.Commit()
 }
 
-func (s *Service) runEventHandlers(e sqlx.Execer, event Model) error {
+type InsertEventTxWrapper struct {
+	e ExecGetter
+	s *Service
+}
+
+func (i InsertEventTxWrapper) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
+	return i.s.InsertEventTx(i.e, eventType, aggregateType, aggregateID, payload)
+}
+
+func (s *Service) runEventHandlers(e ExecGetter, event Model, replay bool) error {
 	if handlers, ok := s.handlers[event.EventType]; ok {
 		for _, h := range handlers {
-			err := h(e, event)
+			w := InsertEventTxWrapper{e: e, s: s}
+
+			err := h(w, event, replay)
 			if err != nil {
 				return fmt.Errorf("handler for %s failed: %w", event.EventType, err)
 			}
@@ -120,7 +149,7 @@ func (s *Service) ReplayEvents() error {
 	}
 
 	for i, event := range events {
-		err := s.runEventHandlers(s.DBTodo, event)
+		err := s.runEventHandlers(s.DBTodo, event, true)
 		if err != nil {
 			return fmt.Errorf("replay failed at event %d (%s): %w", i, event.EventType, err)
 		}

@@ -9,8 +9,8 @@ import (
 )
 
 type NotesCmd struct {
-	Ls ListCmd `cmd:"" default:"withargs"`
-	//Show     ShowCmd     `cmd:""`
+	Ls       ListCmd     `cmd:"" default:"withargs"`
+	Show     ShowCmd     `cmd:""`
 	Add      AddCmd      `cmd:""`
 	Rm       DeleteCmd   `cmd:""`
 	Undelete UndeleteCmd `cmd:""`
@@ -21,20 +21,32 @@ type ListCmd struct {
 }
 
 func (c *ListCmd) Run(app *app.Service) error {
-	type note struct {
-		ID   string    `db:"id"`
-		Text string    `db:"text"`
-		Ts   time.Time `db:"ts"`
-	}
-	var notes []note
-	err := app.ES.DBTodo.Select(&notes, `select * from notes order by ts asc`)
+	noteList, err := app.NS.FindAll()
 	if err != nil {
-		return fmt.Errorf("Select notes: %w", err)
+		return err
 	}
-	for _, note := range notes {
+	for _, note := range noteList {
 		fmt.Printf("%s %s %s\n", note.ID[0:7], note.Ts.Local().Format(time.DateTime), note.Text)
 	}
 
+	return nil
+}
+
+type ShowCmd struct {
+	ID string `arg:""`
+}
+
+func (c *ShowCmd) Run(app *app.Service) error {
+	id, _ := app.ES.GetAggregateID(c.ID)
+	note, err := app.NS.FindOne(id)
+	eventList, err := app.ES.LoadAggregateEvents(id)
+	if err != nil {
+		return err
+	}
+	for _, e := range eventList {
+		fmt.Printf("%7s %s %s\n", "", e.CreatedAt.Local().Format(time.DateTime), e.EventType)
+	}
+	fmt.Println(note)
 	return nil
 }
 

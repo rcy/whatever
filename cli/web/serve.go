@@ -3,12 +3,14 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rcy/whatever/app"
+	"github.com/rcy/whatever/app/notes"
 	"github.com/rcy/whatever/events"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -37,18 +39,12 @@ func (c *ServeCmd) Run(app *app.Service) error {
 }
 
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: this is duplicated in cli/notes.go
-	type note struct {
-		ID   string    `db:"id"`
-		Text string    `db:"text"`
-		Ts   time.Time `db:"ts"`
-	}
-	var notes []note
-	err := s.app.ES.DBTodo.Select(&notes, `select * from notes order by ts desc`)
+	noteList, err := s.app.NS.FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	slices.Reverse(noteList)
 
 	h.HTML(h.Body(
 		h.H1(g.Text("whatever")),
@@ -56,7 +52,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 			h.Input(h.AutoFocus(), h.Name("text")),
 		),
 		h.Table(h.TBody(
-			g.Map(notes, func(note note) g.Node {
+			g.Map(noteList, func(note notes.Model) g.Node {
 				return h.Tr(
 					h.Td(h.Code(g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
