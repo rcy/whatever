@@ -6,20 +6,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/models"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
 
+type webservice struct {
+	app *app.Service
+}
+
 type ServeCmd struct {
 	Port string `default:"9999"`
 }
 
-func (c *ServeCmd) Run(es *events.Service) error {
+func (c *ServeCmd) Run(app *app.Service) error {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	svc := webservice{ES: *es}
+	svc := webservice{app: app}
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/notes", http.StatusSeeOther)
 	})
@@ -30,29 +34,28 @@ func (c *ServeCmd) Run(es *events.Service) error {
 	return http.ListenAndServe(":"+c.Port, r)
 }
 
-type webservice struct {
-	ES events.Service
-}
-
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
-	h.HTML(
-		h.Body(
-			h.H1(g.Text("whatever")),
-			h.Form(h.Action("/notes"), h.Method("post"),
-				h.Input(h.AutoFocus()),
-			),
+	h.HTML(h.Body(
+		h.H1(g.Text("whatever")),
+		h.Form(h.Action("/notes"), h.Method("post"),
+			h.Input(h.AutoFocus(), h.Name("text")),
 		),
-	).Render(w)
+	)).Render(w)
 }
 
 func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
-
+	text := r.FormValue("text")
+	_, err := s.app.CS.CreateNote(text)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 }
 
 func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	var events []models.Event
-	err := s.ES.DBTodo.Select(&events, `select * from events order by event_id desc`)
+	err := s.app.ES.DBTodo.Select(&events, `select * from events order by event_id desc`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -65,6 +68,7 @@ func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 				h.Body(
 					g.Map(events, func(event models.Event) g.Node {
 						return h.Tr(
+							h.Td(g.Text(fmt.Sprint(event.EventID))),
 							h.Td(h.A(h.Code(g.Text(event.AggregateID[0:7])))),
 							h.Td(g.Text(event.EventType)),
 							h.Td(h.Code(g.Text(string(event.EventData)))),

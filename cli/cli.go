@@ -1,8 +1,8 @@
-package commands
+package cli
 
 import (
-	"github.com/rcy/whatever/commands/reminders"
-	"github.com/rcy/whatever/commands/web"
+	"github.com/rcy/whatever/cli/reminders"
+	"github.com/rcy/whatever/cli/web"
 )
 
 var CLI struct {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/olebedev/when"
 	"github.com/olebedev/when/rules/en"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/ids"
 	"github.com/rcy/whatever/models"
 )
@@ -25,7 +25,7 @@ type ListCmd struct {
 	Deleted bool `help:"Show deleted reminders"`
 }
 
-func (c *ListCmd) Run(es *events.Service) error {
+func (c *ListCmd) Run(app *app.Service) error {
 	type id string
 	type reminder struct {
 		text    string
@@ -34,7 +34,7 @@ func (c *ListCmd) Run(es *events.Service) error {
 	}
 	reminders := make(map[id]reminder)
 	var events []models.Event
-	err := es.DBTodo.Select(&events, `select * from events where aggregate_type = 'reminder' order by event_id asc`)
+	err := app.ES.DBTodo.Select(&events, `select * from events where aggregate_type = 'reminder' order by event_id asc`)
 	if err != nil {
 		return fmt.Errorf("Select events: %w", err)
 	}
@@ -82,7 +82,7 @@ type AddCmd struct {
 	Input []string `arg:""`
 }
 
-func (c *AddCmd) Run(es *events.Service) error {
+func (c *AddCmd) Run(app *app.Service) error {
 	input := strings.Join(c.Input, " ")
 
 	when, text, err := parseTimeAndTask(input)
@@ -100,7 +100,7 @@ func (c *AddCmd) Run(es *events.Service) error {
 		Input: input,
 	}
 
-	err = es.InsertEvent("ReminderCreated", "reminder", ids.New(), payload)
+	err = app.ES.InsertEvent("ReminderCreated", "reminder", ids.New(), payload)
 	if err != nil {
 		return fmt.Errorf("insertEvent: %w", err)
 	}
@@ -131,13 +131,13 @@ type DeleteCmd struct {
 	ID string `arg:""`
 }
 
-func (c *DeleteCmd) Run(es *events.Service) error {
-	aggID, err := es.GetAggregateID(strings.ToLower(c.ID))
+func (c *DeleteCmd) Run(app *app.Service) error {
+	aggID, err := app.ES.GetAggregateID(strings.ToLower(c.ID))
 	if err != nil {
 		return err
 	}
 
-	_, err = es.DBTodo.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "reminder", "ReminderDeleted", "{}")
+	_, err = app.ES.DBTodo.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "reminder", "ReminderDeleted", "{}")
 	if err != nil {
 		return fmt.Errorf("db.Exec: %w", err)
 	}
@@ -149,20 +149,16 @@ type UndeleteCmd struct {
 	ID string `arg:""`
 }
 
-func (c *UndeleteCmd) Run(es *events.Service) error {
-	aggID, err := es.GetAggregateID(strings.ToLower(c.ID))
+func (c *UndeleteCmd) Run(app *app.Service) error {
+	aggID, err := app.ES.GetAggregateID(strings.ToLower(c.ID))
 	if err != nil {
 		return err
 	}
 
-	err = es.InsertEvent("ReminderUndeleted", "reminder", aggID, nil)
+	err = app.ES.InsertEvent("ReminderUndeleted", "reminder", aggID, nil)
 	if err != nil {
 		return err
 	}
-	// _, err = s.DBTodo.Exec(`insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?)`, aggID, "reminder", "ReminderUndeleted", "{}")
-	// if err != nil {
-	// 	return fmt.Errorf("db.Exec: %w", err)
-	// }
 
 	return nil
 }

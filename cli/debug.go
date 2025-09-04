@@ -1,4 +1,4 @@
-package commands
+package cli
 
 type DebugCmd struct {
 	Echo EchoCmd `cmd:"" help:"Echo the args back to stdout"`
