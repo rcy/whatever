@@ -50,16 +50,7 @@ func Init(e EventHandlerRegisterer) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	_, err = db.Exec(`drop table if exists notes`)
-	if err != nil {
-		return nil, err
-	}
 	_, err = db.Exec(`create table notes(id, ts timestamp, text)`)
-	if err != nil {
-		return nil, err
-	}
-	_, err = db.Exec(`drop table if exists deleted_notes`)
 	if err != nil {
 		return nil, err
 	}
