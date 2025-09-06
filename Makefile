@@ -1,5 +1,5 @@
 start:
-	WHATEVER_ENV=dev air
+	WHATEVER_ENV=dev PORT=9998 air
 
 build:
 	go build -o ./tmp/main .

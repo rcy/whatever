@@ -9,7 +9,7 @@ import (
 )
 
 type ServeCmd struct {
-	Port string `default:"9999"`
+	Port string `default:"9999" env:"PORT"`
 }
 
 func (c *ServeCmd) Run(app *app.Service) error {
