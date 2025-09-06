@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/app/notes"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/flog"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -90,8 +90,7 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
-	type model events.Model
-	var events []model
+	var events []flog.Model
 	err := s.app.ES.DBTodo.Select(&events, `select * from events order by event_id desc`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -101,7 +100,7 @@ func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	page(g.Group{
 		h.Table(
 			h.Body(
-				g.Map(events, func(event model) g.Node {
+				g.Map(events, func(event flog.Model) g.Node {
 					return h.Tr(
 						h.Td(g.Text(fmt.Sprint(event.EventID))),
 						h.Td(h.A(h.Code(g.Text(event.AggregateID[0:7])))),

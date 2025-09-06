@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/flog"
 	"github.com/rcy/whatever/payloads"
 	_ "modernc.org/sqlite"
 )
@@ -21,7 +21,7 @@ func (m Model) String() string {
 }
 
 type EventHandlerRegisterer interface {
-	RegisterHandler(string, events.HandlerFunc)
+	RegisterHandler(string, flog.HandlerFunc)
 }
 
 type Service struct {
@@ -70,10 +70,10 @@ func Init(e EventHandlerRegisterer) (*Service, error) {
 	return s, nil
 }
 
-func (s *Service) updateNotesProjection(i events.EventInserter, event events.Model, _ bool) error {
+func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, _ bool) error {
 	switch event.EventType {
 	case "NoteCreated":
-		note, err := events.UnmarshalPayload[payloads.NoteCreatedPayload](event)
+		note, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)
 		if err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ func (s *Service) updateNotesProjection(i events.EventInserter, event events.Mod
 	return nil
 }
 
-func (s *Service) doAIStuff(i events.EventInserter, event events.Model, replay bool) error {
+func (s *Service) doAIStuff(i flog.EventInserter, event flog.Model, replay bool) error {
 	if replay {
 		return nil
 	}

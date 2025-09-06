@@ -9,7 +9,7 @@ import (
 	"github.com/olebedev/when"
 	"github.com/olebedev/when/rules/en"
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/flog"
 	"github.com/rcy/whatever/ids"
 )
 
@@ -33,7 +33,7 @@ func (c *ListCmd) Run(app *app.Service) error {
 		deleted bool
 	}
 	reminders := make(map[id]reminder)
-	var events []events.Model
+	var events []flog.Model
 	err := app.ES.DBTodo.Select(&events, `select * from events where aggregate_type = 'reminder' order by event_id asc`)
 	if err != nil {
 		return fmt.Errorf("Select events: %w", err)

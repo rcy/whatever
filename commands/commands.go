@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/flog"
 	"github.com/rcy/whatever/ids"
 	"github.com/rcy/whatever/payloads"
 )
 
 type Service struct {
-	ES *events.Service
+	ES *flog.Service
 }
 
-func New(es *events.Service) *Service {
+func New(es *flog.Service) *Service {
 	return &Service{ES: es}
 }
 

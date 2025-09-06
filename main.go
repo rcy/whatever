@@ -13,7 +13,7 @@ import (
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/cli"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/flog"
 	"github.com/rcy/whatever/version"
 )
 
@@ -79,7 +79,7 @@ func main() {
 
 	kctx := kong.Parse(&cli.CLI)
 
-	es := events.New(sqlxDB, dbFile)
+	es := flog.New(sqlxDB, dbFile)
 	as := app.New(commands.New(es), es)
 
 	err = kctx.Run(as)

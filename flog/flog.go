@@ -1,4 +1,4 @@
-package events
+package flog
 
 import (
 	"database/sql"

@@ -5,16 +5,16 @@ import (
 
 	"github.com/rcy/whatever/app/notes"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/flog"
 )
 
 type Service struct {
 	NS *notes.Service
 	CS *commands.Service
-	ES *events.Service
+	ES *flog.Service
 }
 
-func New(cs *commands.Service, es *events.Service) *Service {
+func New(cs *commands.Service, es *flog.Service) *Service {
 	ns, err := notes.Init(es)
 	if err != nil {
 		log.Fatal(err)
