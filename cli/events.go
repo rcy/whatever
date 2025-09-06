@@ -25,14 +25,14 @@ func (c *EventsCmd) Run(app *app.Service) error {
 		}
 	} else {
 		var err error
-		events, err = app.ES.LoadAllEvents()
+		events, err = app.ES.LoadAllEvents(true)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, e := range events {
-		fmt.Printf("%s %-14s %s %s\n", e.AggregateID[0:5], e.EventType, e.CreatedAt.Format(time.RFC3339), e.EventData)
+		fmt.Printf("%d\t%s\t%s\t%s\t%s\n", e.EventID, e.AggregateID[0:5], e.EventType, e.CreatedAt.Format(time.RFC3339), e.EventData)
 	}
 	return nil
 }

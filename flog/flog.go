@@ -134,9 +134,16 @@ func (s *Service) LoadAggregateEvents(aggregateID string) ([]Model, error) {
 	return events, nil
 }
 
-func (s *Service) LoadAllEvents() ([]Model, error) {
+func (s *Service) LoadAllEvents(reverse bool) ([]Model, error) {
 	var events []Model
-	err := s.db.Select(&events, `select * from events order by event_id`)
+
+	var order string
+	if reverse {
+		order = "desc"
+	} else {
+		order = "asc"
+	}
+	err := s.db.Select(&events, fmt.Sprintf(`select * from events order by event_id %s`, order))
 	if err != nil {
 		return nil, err
 	}
