@@ -1,6 +1,9 @@
 start:
 	WHATEVER_ENV=dev air
 
+build:
+	go build -o ./tmp/main .
+
 test:
 	go test ./...
 
