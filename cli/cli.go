@@ -7,4 +7,5 @@ var CLI struct {
 	Ddate   DDateCmd   `cmd:""`
 	Debug   DebugCmd   `cmd:""`
 	Serve   ServeCmd   `cmd:""`
+	Bug     BugCmd     `cmd:""`
 }

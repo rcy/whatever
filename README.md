@@ -60,3 +60,9 @@ Prickle-Prickle, Bureaucracy 30, 3191 YOLD
 $ whatever serve
 listening on http://localhost:9999
 ```
+
+### Reporting bugs, feature requests, or whatever
+
+```sh
+$ whatever bug
+```
