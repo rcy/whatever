@@ -20,11 +20,7 @@ type webservice struct {
 	app *app.Service
 }
 
-type ServeCmd struct {
-	Port string `default:"9999"`
-}
-
-func (c *ServeCmd) Run(app *app.Service) error {
+func Server(app *app.Service) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	svc := webservice{app: app}
@@ -34,8 +30,7 @@ func (c *ServeCmd) Run(app *app.Service) error {
 	r.Get("/notes", svc.notesHandler)
 	r.Post("/notes", svc.postNotesHandler)
 	r.Get("/events", svc.eventsHandler)
-	fmt.Printf("listening on http://localhost:%s\n", c.Port)
-	return http.ListenAndServe(":"+c.Port, r)
+	return r
 }
 
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {

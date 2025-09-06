@@ -2,7 +2,6 @@ package cli
 
 import (
 	"github.com/rcy/whatever/cli/reminders"
-	"github.com/rcy/whatever/cli/web"
 )
 
 var CLI struct {
@@ -12,5 +11,5 @@ var CLI struct {
 	Events    EventsCmd     `cmd:""`
 	Ddate     DDateCmd      `cmd:""`
 	Debug     DebugCmd      `cmd:""`
-	Serve     web.ServeCmd  `cmd:""`
+	Serve     ServeCmd      `cmd:""`
 }
