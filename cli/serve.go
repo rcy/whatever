@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/cli/web"
+	"github.com/rcy/whatever/web"
 )
 
 type ServeCmd struct {

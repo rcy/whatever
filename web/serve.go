@@ -1,6 +1,7 @@
 package web
 
 import (
+	_ "embed"
 	"fmt"
 	"net/http"
 	"slices"
@@ -33,6 +34,26 @@ func Server(app *app.Service) *chi.Mux {
 	return r
 }
 
+type Params struct {
+	Main g.Node
+}
+
+func page(main g.Node) g.Node {
+	return h.HTML(h.Lang("en"),
+		h.Head(
+			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
+			//h.Meta(h.Name("color-scheme"), h.Content("light dark")),
+			h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.jade.min.css")),
+			h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css")),
+		),
+		h.Body( //g.Attr("data-theme", "dark"),
+			h.Div(h.Class("container"),
+				h.H1(g.Text("whatever")),
+				h.Main(main),
+			)),
+	)
+}
+
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	noteList, err := s.app.NS.FindAll()
 	if err != nil {
@@ -41,12 +62,11 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
-	h.HTML(h.Body(
-		h.H1(g.Text("whatever")),
+	page(g.Group{
 		h.Form(h.Action("/notes"), h.Method("post"),
 			h.Input(h.AutoFocus(), h.Name("text")),
 		),
-		h.Table(h.TBody(
+		h.Table(h.Class("striped"), h.TBody(
 			g.Map(noteList, func(note notes.Model) g.Node {
 				return h.Tr(
 					h.Td(h.Code(g.Text(note.ID[0:7]))),
@@ -54,7 +74,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 					h.Td(g.Text(note.Text)),
 				)
 			}))),
-	)).Render(w)
+	}).Render(w)
 }
 
 func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
@@ -78,21 +98,19 @@ func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.HTML(
-		h.Body(
-			h.H1(g.Text("whatever events")),
-			h.Table(
-				h.Body(
-					g.Map(events, func(event model) g.Node {
-						return h.Tr(
-							h.Td(g.Text(fmt.Sprint(event.EventID))),
-							h.Td(h.A(h.Code(g.Text(event.AggregateID[0:7])))),
-							h.Td(g.Text(event.EventType)),
-							h.Td(h.Code(g.Text(string(event.EventData)))),
-						)
-					}),
-				),
+	page(g.Group{
+		h.Table(
+			h.Body(
+				g.Map(events, func(event model) g.Node {
+					return h.Tr(
+						h.Td(g.Text(fmt.Sprint(event.EventID))),
+						h.Td(h.A(h.Code(g.Text(event.AggregateID[0:7])))),
+						h.Td(g.Text(event.EventType)),
+						h.Td(h.Code(g.Text(string(event.EventData)))),
+					)
+				}),
 			),
 		),
+	},
 	).Render(w)
 }
