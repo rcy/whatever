@@ -9,10 +9,10 @@ import (
 )
 
 type NotesCmd struct {
-	Ls       ListCmd     `cmd:"" default:"withargs"`
+	List     ListCmd     `cmd:"" default:"withargs" aliases:"ls"`
 	Show     ShowCmd     `cmd:""`
 	Add      AddCmd      `cmd:""`
-	Rm       DeleteCmd   `cmd:""`
+	Delete   DeleteCmd   `cmd:"" aliases:"rm"`
 	Undelete UndeleteCmd `cmd:""`
 }
 
