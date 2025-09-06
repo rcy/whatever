@@ -31,7 +31,10 @@ func Server(app *app.Service) *chi.Mux {
 		http.Redirect(w, r, "/notes", http.StatusSeeOther)
 	})
 	r.Get("/notes", svc.notesHandler)
+	r.Get("/deleted_notes", svc.deletedNotesHandler)
 	r.Get("/notes/{id}", svc.showNoteHandler)
+	r.Post("/notes/{id}/delete", svc.deleteNoteHandler)
+	r.Post("/notes/{id}/undelete", svc.undeleteNoteHandler)
 	r.Post("/notes", svc.postNotesHandler)
 	r.Get("/events", svc.eventsHandler)
 	return r
@@ -51,7 +54,12 @@ func page(main g.Node) g.Node {
 		),
 		h.Body( //g.Attr("data-theme", "dark"),
 			h.Div(h.Class("container"),
-				h.H1(g.Text("whatever")),
+				h.Div(h.Style("display:flex; gap:1em; align-items:base-line"),
+					h.H2(g.Text("whatever")),
+					h.H2(h.A(h.Href("/notes"), g.Text("notes"))),
+					h.H2(h.A(h.Href("/events"), g.Text("events"))),
+					h.H2(h.A(h.Href("/deleted_notes"), g.Text("deleted"))),
+				),
 				h.Main(main),
 			)),
 	)
@@ -80,6 +88,31 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	}).Render(w)
 }
 
+func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request) {
+	noteList, err := s.app.NS.FindAllDeleted()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(noteList)
+
+	page(g.Group{
+		h.Table(h.Class("striped"), h.TBody(
+			g.Map(noteList, func(note notes.Model) g.Node {
+				return h.Tr(
+					h.Td(g.Text(note.ID[0:7])),
+					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
+					h.Td(linkifyNode(note.Text)),
+					h.Td(
+						h.Form(h.Style("margin:0"),
+							h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/undelete", note.ID)),
+							h.Button(h.Class("outline secondary"), h.Style("padding:0 1em"), g.Text("undelete"))),
+					),
+				)
+			}))),
+	}).Render(w)
+}
+
 func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -90,9 +123,41 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page(g.Group{
-		h.H2(g.Text(id[0:7])),
+		h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
+			h.H2(g.Text(id[0:7])),
+			h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/delete", id)),
+				h.Button(
+					h.Class("outline secondary"),
+					g.Text("delete"),
+				),
+			),
+		),
 		h.P(linkifyNode(note.Text)),
 	}).Render(w)
+}
+
+func (s *webservice) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	err := s.app.CS.DeleteNote(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/notes", http.StatusSeeOther)
+}
+
+func (s *webservice) undeleteNoteHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	err := s.app.CS.UndeleteNote(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/notes/%s", id), http.StatusSeeOther)
 }
 
 func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {

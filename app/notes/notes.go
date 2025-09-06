@@ -46,6 +46,15 @@ func (s *Service) FindAll() ([]Model, error) {
 	return noteList, nil
 }
 
+func (s *Service) FindAllDeleted() ([]Model, error) {
+	var noteList []Model
+	err := s.db.Select(&noteList, `select * from deleted_notes order by ts asc`)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes: %w", err)
+	}
+	return noteList, nil
+}
+
 func Init(e EventHandlerRegisterer) (*Service, error) {
 	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
