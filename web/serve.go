@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -132,8 +133,23 @@ func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 
 func linkify(text string) string {
 	re := xurls.Relaxed()
-	return re.ReplaceAllStringFunc(text, func(url string) string {
-		return fmt.Sprintf(`<a href="%[1]s">%[1]s</a>`, url)
+	return re.ReplaceAllStringFunc(text, func(match string) string {
+		if strings.Contains(match, "@") {
+			idxEmail := re.SubexpIndex("relaxedEmail")
+			matches := re.FindStringSubmatch(match)
+			if matches[idxEmail] != "" {
+				// return email as is
+				return matches[idxEmail]
+			}
+		}
+		url, err := url.Parse(match)
+		if err != nil {
+			return match
+		}
+		if url.Scheme == "" {
+			url.Scheme = "https"
+		}
+		return fmt.Sprintf(`<a href="%s">%s</a>`, url.String(), match)
 	})
 }
 
