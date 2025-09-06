@@ -4,7 +4,7 @@ An app that does things
 
 ## Install
 
-```
+```sh
 go install github.com/rcy/whatever@latest
 ```
 
@@ -14,7 +14,7 @@ go install github.com/rcy/whatever@latest
 
 Add, show, delete and undelete notes.
 
-```
+```sh
 # create a note
 $ whatever notes add think about going outside
 
@@ -49,14 +49,14 @@ $ whatever events
 
 ### Discordian Date
 
-```
+```sh
 $ whatever ddate
 Prickle-Prickle, Bureaucracy 30, 3191 YOLD
 ```
 
 ### Web Server!
 
-```
+```sh
 $ whatever serve
 listening on http://localhost:9999
 ```
