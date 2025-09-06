@@ -14,6 +14,7 @@ import (
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/app/notes"
 	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/version"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 	"mvdan.cc/xurls/v2"
@@ -45,12 +46,19 @@ type Params struct {
 }
 
 func page(main g.Node) g.Node {
+	var color string
+	if version.IsRelease() {
+		color = "jade"
+	} else {
+		color = "slate"
+	}
+
 	return h.HTML(h.Lang("en"),
 		h.Head(
 			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
 			//h.Meta(h.Name("color-scheme"), h.Content("light dark")),
-			h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.jade.min.css")),
-			h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css")),
+			h.Link(h.Rel("stylesheet"), h.Href(fmt.Sprintf("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.%s.min.css", color))),
+			//h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css")),
 		),
 		h.Body( //g.Attr("data-theme", "dark"),
 			h.Div(h.Class("container"),
