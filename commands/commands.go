@@ -6,6 +6,7 @@ import (
 
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/ids"
+	"github.com/rcy/whatever/payloads"
 )
 
 type Service struct {
@@ -22,7 +23,7 @@ func (s *Service) CreateNote(text string) (string, error) {
 	if text == "" {
 		return "", fmt.Errorf("text cannot be empty")
 	}
-	err := s.ES.InsertEvent("NoteCreated", "note", aggID, events.NoteCreatedPayload{Text: text})
+	err := s.ES.InsertEvent("NoteCreated", "note", aggID, payloads.NoteCreatedPayload{Text: text})
 	if err != nil {
 		return "", err
 	}

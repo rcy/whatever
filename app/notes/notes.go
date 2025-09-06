@@ -6,6 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rcy/whatever/events"
+	"github.com/rcy/whatever/payloads"
 	_ "modernc.org/sqlite"
 )
 
@@ -72,7 +73,7 @@ func Init(e EventHandlerRegisterer) (*Service, error) {
 func (s *Service) updateNotesProjection(i events.EventInserter, event events.Model, _ bool) error {
 	switch event.EventType {
 	case "NoteCreated":
-		note, err := events.UnmarshalPayload[events.NoteCreatedPayload](event)
+		note, err := events.UnmarshalPayload[payloads.NoteCreatedPayload](event)
 		if err != nil {
 			return err
 		}
