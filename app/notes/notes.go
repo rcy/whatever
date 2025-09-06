@@ -65,7 +65,6 @@ func Init(e EventHandlerRegisterer) (*Service, error) {
 	e.RegisterHandler("NoteCreated", s.updateNotesProjection)
 	e.RegisterHandler("NoteDeleted", s.updateNotesProjection)
 	e.RegisterHandler("NoteUndeleted", s.updateNotesProjection)
-	e.RegisterHandler("NoteCreated", s.doAIStuff)
 
 	return s, nil
 }
@@ -100,20 +99,5 @@ func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, 
 	default:
 		return fmt.Errorf("EventType not handled")
 	}
-	return nil
-}
-
-func (s *Service) doAIStuff(i flog.EventInserter, event flog.Model, replay bool) error {
-	if replay {
-		return nil
-	}
-
-	fmt.Println("doing ai inference on", event.AggregateID)
-
-	err := i.InsertEvent("NoteAnalyzed", "note", event.AggregateID, struct{ Inference string }{Inference: "it looks good"})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
