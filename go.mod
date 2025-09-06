@@ -12,6 +12,7 @@ require (
 	github.com/rcy/disco v0.2.2
 	maragu.dev/gomponents v1.2.0
 	modernc.org/sqlite v1.38.2
+	mvdan.cc/xurls/v2 v2.6.0
 )
 
 require (

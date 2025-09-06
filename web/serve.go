@@ -15,6 +15,7 @@ import (
 	"github.com/rcy/whatever/flog"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
+	"mvdan.cc/xurls/v2"
 )
 
 type webservice struct {
@@ -29,6 +30,7 @@ func Server(app *app.Service) *chi.Mux {
 		http.Redirect(w, r, "/notes", http.StatusSeeOther)
 	})
 	r.Get("/notes", svc.notesHandler)
+	r.Get("/notes/{id}", svc.showNoteHandler)
 	r.Post("/notes", svc.postNotesHandler)
 	r.Get("/events", svc.eventsHandler)
 	return r
@@ -69,11 +71,26 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		h.Table(h.Class("striped"), h.TBody(
 			g.Map(noteList, func(note notes.Model) g.Node {
 				return h.Tr(
-					h.Td(h.Code(g.Text(note.ID[0:7]))),
+					h.Td(h.A(h.Href("/notes/"+note.ID), g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
-					h.Td(g.Text(note.Text)),
+					h.Td(linkifyNode(note.Text)),
 				)
 			}))),
+	}).Render(w)
+}
+
+func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	note, err := s.app.NS.FindOne(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page(g.Group{
+		h.H2(g.Text(id[0:7])),
+		h.P(linkifyNode(note.Text)),
 	}).Render(w)
 }
 
@@ -111,4 +128,15 @@ func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 		),
 	},
 	).Render(w)
+}
+
+func linkify(text string) string {
+	re := xurls.Relaxed()
+	return re.ReplaceAllStringFunc(text, func(url string) string {
+		return fmt.Sprintf(`<a href="%[1]s">%[1]s</a>`, url)
+	})
+}
+
+func linkifyNode(text string) g.Node {
+	return g.Raw(linkify(text))
 }
