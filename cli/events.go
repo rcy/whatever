@@ -19,14 +19,15 @@ func (c *EventsCmd) Run(app *app.Service) error {
 		if err != nil {
 			return err
 		}
-		err = app.ES.DBTodo.Select(&events, `select * from events where aggregate_id = ? order by event_id `, aggID)
+		events, err = app.ES.LoadAggregateEvents(aggID)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := app.ES.DBTodo.Select(&events, `select * from events order by event_id`)
+		var err error
+		events, err = app.ES.LoadAllEvents()
 		if err != nil {
-			return fmt.Errorf("Select: %w", err)
+			return err
 		}
 	}
 

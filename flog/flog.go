@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,17 +22,67 @@ type Model struct {
 }
 
 type Service struct {
-	DBTodo   *sqlx.DB
-	DBFile   string
+	db       *sqlx.DB
 	handlers map[string][]HandlerFunc
+	Config   *Config
 }
 
-func New(db *sqlx.DB, dbFile string) *Service {
-	return &Service{
-		DBTodo:   db,
-		DBFile:   dbFile,
-		handlers: make(map[string][]HandlerFunc),
+type Config struct {
+	DBFile string
+}
+
+func NewStore(config Config) (*Service, error) {
+	err := os.MkdirAll(filepath.Dir(config.DBFile), 0755)
+	if err != nil {
+		return nil, err
 	}
+
+	db, err := sql.Open("sqlite", config.DBFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Tune connection pool
+	db.SetMaxOpenConns(1) // SQLite supports one writer, so cap to 1
+	db.SetMaxIdleConns(1)
+
+	// Enable WAL mode for better concurrency and durability
+	if _, err := db.Exec(`PRAGMA journal_mode = WAL;`); err != nil {
+		return nil, fmt.Errorf("failed to enable WAL mode:", err)
+	}
+
+	// Optional performance pragmas (tweak based on needs):
+	if _, err := db.Exec(`PRAGMA synchronous = NORMAL;`); err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		return nil, err
+	}
+
+	if _, err := db.Exec(`
+		create table if not exists events (
+			event_id integer primary key autoincrement,
+                        created_at timestamp not null default current_timestamp,
+                        aggregate_type text not null,
+                        aggregate_id text not null,
+                        event_type text not null,
+                        event_data text not null
+		);
+	`); err != nil {
+		return nil, err
+	}
+
+	sqlxDB := sqlx.NewDb(db, "sqlite3")
+
+	return &Service{
+		db:       sqlxDB,
+		Config:   &config,
+		handlers: make(map[string][]HandlerFunc),
+	}, nil
+}
+
+func (s *Service) Close() error {
+	return s.db.Close()
 }
 
 type EventInserter interface {
@@ -51,7 +103,7 @@ func (s *Service) RegisterHandler(eventType string, handler HandlerFunc) {
 func (s *Service) GetAggregateIDs(prefix string) ([]string, error) {
 	var aggIDs []string
 	query := fmt.Sprintf("%s%%", prefix)
-	err := s.DBTodo.Select(&aggIDs, `select distinct aggregate_id from events where aggregate_id like ?`, query)
+	err := s.db.Select(&aggIDs, `select distinct aggregate_id from events where aggregate_id like ?`, query)
 	if err != nil {
 		return nil, fmt.Errorf("Select: %w", err)
 	}
@@ -75,7 +127,16 @@ func (s *Service) GetAggregateID(prefix string) (string, error) {
 
 func (s *Service) LoadAggregateEvents(aggregateID string) ([]Model, error) {
 	var events []Model
-	err := s.DBTodo.Select(&events, `select * from events where aggregate_id = ? order by event_id asc`, aggregateID)
+	err := s.db.Select(&events, `select * from events where aggregate_id = ? order by event_id asc`, aggregateID)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
+func (s *Service) LoadAllEvents() ([]Model, error) {
+	var events []Model
+	err := s.db.Select(&events, `select * from events order by event_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +166,7 @@ func (s *Service) InsertEventTx(e ExecGetter, eventType string, aggregateType st
 }
 
 func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
-	tx, err := s.DBTodo.Beginx()
+	tx, err := s.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("Begin: %w", err)
 	}
@@ -144,12 +205,12 @@ func (s *Service) runEventHandlers(e ExecGetter, event Model, replay bool) error
 
 func (s *Service) ReplayEvents() error {
 	events := []Model{}
-	if err := s.DBTodo.Select(&events, `select * from events order by event_id asc`); err != nil {
+	if err := s.db.Select(&events, `select * from events order by event_id asc`); err != nil {
 		return err
 	}
 
 	for i, event := range events {
-		err := s.runEventHandlers(s.DBTodo, event, true)
+		err := s.runEventHandlers(s.db, event, true)
 		if err != nil {
 			return fmt.Errorf("replay failed at event %d (%s): %w", i, event.EventType, err)
 		}
