@@ -7,5 +7,4 @@ var CLI struct {
 	Ddate   DDateCmd   `cmd:"" help:"show current discordian date"`
 	Serve   ServeCmd   `cmd:"" help:"start a webserver"`
 	Bug     BugCmd     `cmd:"" help:"report a bug"`
-	Debug   DebugCmd   `cmd:"" help:"debug commands"`
 }

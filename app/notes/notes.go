@@ -77,7 +77,7 @@ func Init(e flog.EventHandlerRegisterer) (*Service, error) {
 	return s, nil
 }
 
-func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, _ bool) error {
+func (s *Service) updateNotesProjection(event flog.Model, _ flog.EventInserter, _ bool) error {
 	switch event.EventType {
 	case payloads.NoteCreated:
 		payload, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)

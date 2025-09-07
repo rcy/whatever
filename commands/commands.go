@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/rcy/whatever/flog"
-	"github.com/rcy/whatever/ids"
 	"github.com/rcy/whatever/payloads"
 )
 
@@ -18,7 +17,7 @@ func New(es *flog.Service) *Service {
 }
 
 func (s *Service) CreateNote(text string) (string, error) {
-	aggID := ids.New()
+	aggID := flog.ID()
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return "", fmt.Errorf("text cannot be empty")

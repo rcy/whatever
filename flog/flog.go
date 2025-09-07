@@ -94,7 +94,7 @@ type ExecGetter interface {
 	Get(dest interface{}, query string, args ...interface{}) error
 }
 
-type HandlerFunc func(i EventInserter, event Model, replay bool) error
+type HandlerFunc func(event Model, inserter EventInserter, replay bool) error
 
 func (s *Service) RegisterHandler(eventType string, handler HandlerFunc) {
 	s.handlers[eventType] = append(s.handlers[eventType], handler)
@@ -154,7 +154,7 @@ func (s *Service) LoadAllEvents(reverse bool) ([]Model, error) {
 	return events, nil
 }
 
-func (s *Service) InsertEventTx(e ExecGetter, eventType string, aggregateType string, aggregateID string, payload any) error {
+func (s *Service) insertEventTx(e ExecGetter, eventType string, aggregateType string, aggregateID string, payload any) error {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
@@ -183,7 +183,7 @@ func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateI
 	}
 	defer tx.Rollback()
 
-	err = s.InsertEventTx(tx, eventType, aggregateType, aggregateID, payload)
+	err = s.insertEventTx(tx, eventType, aggregateType, aggregateID, payload)
 	if err != nil {
 		return fmt.Errorf("InsertEventTx: %w", err)
 	}
@@ -197,15 +197,14 @@ type InsertEventTxWrapper struct {
 }
 
 func (i InsertEventTxWrapper) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
-	return i.s.InsertEventTx(i.e, eventType, aggregateType, aggregateID, payload)
+	return i.s.insertEventTx(i.e, eventType, aggregateType, aggregateID, payload)
 }
 
 func (s *Service) runEventHandlers(e ExecGetter, event Model, replay bool) error {
 	if handlers, ok := s.handlers[event.EventType]; ok {
-		for _, h := range handlers {
-			w := InsertEventTxWrapper{e: e, s: s}
-
-			err := h(w, event, replay)
+		inserter := InsertEventTxWrapper{e: e, s: s}
+		for _, handle := range handlers {
+			err := handle(event, inserter, replay)
 			if err != nil {
 				return fmt.Errorf("handler for %s failed: %w", event.EventType, err)
 			}
