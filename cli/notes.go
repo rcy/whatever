@@ -34,7 +34,7 @@ func (c *ListCmd) Run(app *app.Service) error {
 		return err
 	}
 	for _, note := range noteList {
-		fmt.Printf("%s %s %s\n", note.ID[0:7], note.Ts.Local().Format(time.DateTime), note.Text)
+		fmt.Printf("%s %s %s\n", note.ID[0:7], note.Category, note.Text)
 	}
 
 	return nil

@@ -38,6 +38,7 @@ func Server(app *app.Service) *chi.Mux {
 	r.Post("/notes/{id}/edit", svc.postEditNoteHandler)
 	r.Post("/notes/{id}/delete", svc.deleteNoteHandler)
 	r.Post("/notes/{id}/undelete", svc.undeleteNoteHandler)
+	r.Post("/notes/{id}/set/{category}", svc.postSetNotesCategoryHandler)
 	r.Post("/notes", svc.postNotesHandler)
 	r.Get("/events", svc.eventsHandler)
 	return r
@@ -61,6 +62,7 @@ func page(main g.Node) g.Node {
 			//h.Meta(h.Name("color-scheme"), h.Content("light dark")),
 			h.Link(h.Rel("stylesheet"), h.Href(fmt.Sprintf("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.%s.min.css", color))),
 			//h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css")),
+			h.Script(h.Src("https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js")),
 		),
 		h.Body( //g.Attr("data-theme", "dark"),
 			h.Div(h.Class("container"),
@@ -93,9 +95,31 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 					h.Td(h.A(h.Href("/notes/"+note.ID), g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(linkifyNode(note.Text)),
+					h.Td(notesButtonsNode(note)),
 				)
 			}))),
 	}).Render(w)
+}
+
+func notesButtonsNode(note notes.Model) g.Node {
+	base := fmt.Sprintf("/notes/%s/set/", note.ID)
+	return h.Div(
+		g.Map([]string{"task", "reminder", "idea", "reference", "observation"},
+			func(category string) g.Node {
+				return h.Button(g.Text(category), g.Attr("hx-post", base+category))
+			}),
+	)
+}
+
+func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	category := chi.URLParam(r, "category")
+
+	err := s.app.CS.SetNoteCategory(id, category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request) {

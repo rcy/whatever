@@ -11,9 +11,10 @@ import (
 )
 
 type Model struct {
-	ID   string    `db:"id"`
-	Text string    `db:"text"`
-	Ts   time.Time `db:"ts"`
+	ID       string    `db:"id"`
+	Text     string    `db:"text"`
+	Category string    `db:"category"`
+	Ts       time.Time `db:"ts"`
 }
 
 func (m Model) String() string {
@@ -46,7 +47,7 @@ func (s *Service) FindAllDeleted() ([]Model, error) {
 	var noteList []Model
 	err := s.db.Select(&noteList, `select * from deleted_notes order by ts asc`)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select deleted notes: %w", err)
 	}
 	return noteList, nil
 }
@@ -56,53 +57,54 @@ func Init(e flog.EventHandlerRegisterer) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id, ts timestamp, text)`)
+	_, err = db.Exec(`create table notes(id not null, ts timestamp not null, text not null, category not null)`)
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table deleted_notes(id, ts timestamp, text)`)
+	_, err = db.Exec(`create table deleted_notes(id not null, ts timestamp not null, text not null, category not null)`)
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Service{db: db}
 
-	e.RegisterHandler("NoteCreated", s.updateNotesProjection)
-	e.RegisterHandler("NoteDeleted", s.updateNotesProjection)
-	e.RegisterHandler("NoteUndeleted", s.updateNotesProjection)
-	e.RegisterHandler("NoteTextUpdated", s.updateNotesProjection)
+	e.RegisterHandler(payloads.NoteCreated, s.updateNotesProjection)
+	e.RegisterHandler(payloads.NoteDeleted, s.updateNotesProjection)
+	e.RegisterHandler(payloads.NoteUndeleted, s.updateNotesProjection)
+	e.RegisterHandler(payloads.NoteTextUpdated, s.updateNotesProjection)
+	e.RegisterHandler(payloads.NoteCategoryChanged, s.updateNotesProjection)
 
 	return s, nil
 }
 
 func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, _ bool) error {
 	switch event.EventType {
-	case "NoteCreated":
+	case payloads.NoteCreated:
 		payload, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)
 		if err != nil {
 			return err
 		}
-		_, err = s.db.Exec(`insert into notes(id, ts, text) values(?,?,?)`, event.AggregateID, event.CreatedAt, payload.Text)
+		_, err = s.db.Exec(`insert into notes(id, ts, text, category) values(?,?,?,?)`, event.AggregateID, event.CreatedAt, payload.Text, "inbox")
 		if err != nil {
 			return err
 		}
-	case "NoteDeleted":
-		_, err := s.db.Exec(`insert into deleted_notes(id, ts, text) select id, ts, text from notes where id = ?`, event.AggregateID)
+	case payloads.NoteDeleted:
+		_, err := s.db.Exec(`insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`, event.AggregateID)
 		if err != nil {
 			return err
 		}
 
 		_, err = s.db.Exec(`delete from notes where id = ?`, event.AggregateID)
 		return err
-	case "NoteUndeleted":
-		_, err := s.db.Exec(`insert into notes(id, ts, text) select id, ts, text from deleted_notes where id = ?`, event.AggregateID)
+	case payloads.NoteUndeleted:
+		_, err := s.db.Exec(`insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`, event.AggregateID)
 		if err != nil {
 			return err
 		}
 
 		_, err = s.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
 		return err
-	case "NoteTextUpdated":
+	case payloads.NoteTextUpdated:
 		payload, err := flog.UnmarshalPayload[payloads.NoteTextUpdatedPayload](event)
 		if err != nil {
 			return err
@@ -112,8 +114,17 @@ func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, 
 		if err != nil {
 			return err
 		}
+		return err
+	case payloads.NoteCategoryChanged:
+		payload, err := flog.UnmarshalPayload[payloads.NoteCategoryChangedPayload](event)
+		if err != nil {
+			return err
+		}
 
-		_, err = s.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
+		_, err = s.db.Exec(`update notes set category = ? where id = ?`, payload.Category, event.AggregateID)
+		if err != nil {
+			return err
+		}
 		return err
 	default:
 		return fmt.Errorf("EventType not handled")
