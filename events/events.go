@@ -1,4 +1,4 @@
-package payloads
+package events
 
 import "github.com/rcy/whatever/evoke"
 
