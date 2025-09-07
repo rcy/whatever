@@ -9,6 +9,6 @@ import (
 type VersionCmd struct{}
 
 func (c *VersionCmd) Run() error {
-	fmt.Printf("version=%s isRelease=%v", version.Version(), version.IsRelease())
+	fmt.Printf("version=%s isRelease=%v\n", version.Version(), version.IsRelease())
 	return nil
 }
