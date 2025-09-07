@@ -10,14 +10,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Model struct {
+type Note struct {
 	ID       string    `db:"id"`
 	Text     string    `db:"text"`
 	Category string    `db:"category"`
 	Ts       time.Time `db:"ts"`
 }
 
-func (m Model) String() string {
+func (m Note) String() string {
 	return fmt.Sprintf("%s %s %s", m.ID[0:7], m.Ts.Local().Format(time.DateTime), m.Text)
 }
 
@@ -25,17 +25,17 @@ type Projection struct {
 	db *sqlx.DB
 }
 
-func (p *Projection) FindOne(id string) (Model, error) {
-	var note Model
+func (p *Projection) FindOne(id string) (Note, error) {
+	var note Note
 	err := p.db.Get(&note, `select * from notes where id = ?`, id)
 	if err != nil {
-		return Model{}, err
+		return Note{}, err
 	}
 	return note, nil
 }
 
-func (p *Projection) FindAll() ([]Model, error) {
-	var noteList []Model
+func (p *Projection) FindAll() ([]Note, error) {
+	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes order by ts asc`)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
@@ -43,8 +43,8 @@ func (p *Projection) FindAll() ([]Model, error) {
 	return noteList, nil
 }
 
-func (p *Projection) FindAllDeleted() ([]Model, error) {
-	var noteList []Model
+func (p *Projection) FindAllDeleted() ([]Note, error) {
+	var noteList []Note
 	err := p.db.Select(&noteList, `select * from deleted_notes order by ts asc`)
 	if err != nil {
 		return nil, fmt.Errorf("Select deleted notes: %w", err)

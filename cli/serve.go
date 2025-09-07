@@ -12,7 +12,7 @@ type ServeCmd struct {
 	Port string `default:"9999" env:"PORT"`
 }
 
-func (c *ServeCmd) Run(app *app.Service) error {
+func (c *ServeCmd) Run(app *app.App) error {
 	ws := web.Server(app)
 	fmt.Printf("listening on http://localhost:%s\n", c.Port)
 	return http.ListenAndServe(":"+c.Port, ws)

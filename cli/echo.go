@@ -11,7 +11,7 @@ type EchoCmd struct {
 	Arg []string `arg:"" optional:""`
 }
 
-func (c *EchoCmd) Run(app *app.Service) error {
+func (c *EchoCmd) Run(app *app.App) error {
 	fmt.Println(strings.Join(c.Arg, " "))
 	return nil
 }

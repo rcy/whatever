@@ -8,13 +8,13 @@ import (
 	"github.com/rcy/whatever/flog"
 )
 
-type Service struct {
+type App struct {
 	Commands *commands.Service
 	Events   *flog.Service
 	Notes    *notes.Projection
 }
 
-func New(cmds *commands.Service, events *flog.Service) *Service {
+func New(cmds *commands.Service, events *flog.Service) *App {
 	notes, err := notes.New()
 	if err != nil {
 		log.Fatal(err)
@@ -27,7 +27,7 @@ func New(cmds *commands.Service, events *flog.Service) *Service {
 		log.Fatal(err)
 	}
 
-	return &Service{
+	return &App{
 		Commands: cmds,
 		Events:   events,
 		Notes:    notes,

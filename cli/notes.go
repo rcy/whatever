@@ -22,8 +22,8 @@ type ListCmd struct {
 	Deleted bool `help:"Show deleted notes"`
 }
 
-func (c *ListCmd) Run(app *app.Service) error {
-	var noteList []notes.Model
+func (c *ListCmd) Run(app *app.App) error {
+	var noteList []notes.Note
 	var err error
 	if c.Deleted {
 		noteList, err = app.Notes.FindAllDeleted()
@@ -44,7 +44,7 @@ type ShowCmd struct {
 	ID string `arg:""`
 }
 
-func (c *ShowCmd) Run(app *app.Service) error {
+func (c *ShowCmd) Run(app *app.App) error {
 	id, _ := app.Events.GetAggregateID(c.ID)
 	note, err := app.Notes.FindOne(id)
 	eventList, err := app.Events.LoadAggregateEvents(id)
@@ -62,7 +62,7 @@ type AddCmd struct {
 	Text []string `arg:""`
 }
 
-func (c *AddCmd) Run(app *app.Service) error {
+func (c *AddCmd) Run(app *app.App) error {
 	aggID, err := app.Commands.CreateNote(strings.Join(c.Text, " "))
 	fmt.Println(aggID)
 	return err
@@ -73,7 +73,7 @@ type EditCmd struct {
 	Text []string `arg:""`
 }
 
-func (c *EditCmd) Run(app *app.Service) error {
+func (c *EditCmd) Run(app *app.App) error {
 	err := app.Commands.UpdateNoteText(c.ID, strings.Join(c.Text, " "))
 	return err
 }
@@ -82,7 +82,7 @@ type DeleteCmd struct {
 	ID string `arg:""`
 }
 
-func (c *DeleteCmd) Run(app *app.Service) error {
+func (c *DeleteCmd) Run(app *app.App) error {
 	return app.Commands.DeleteNote(c.ID)
 }
 
@@ -90,6 +90,6 @@ type UndeleteCmd struct {
 	ID string `arg:""`
 }
 
-func (c *UndeleteCmd) Run(app *app.Service) error {
+func (c *UndeleteCmd) Run(app *app.App) error {
 	return app.Commands.UndeleteNote(c.ID)
 }

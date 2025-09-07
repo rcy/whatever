@@ -11,7 +11,7 @@ import (
 type DDateCmd struct {
 }
 
-func (c *DDateCmd) Run(app *app.Service) error {
+func (c *DDateCmd) Run(app *app.App) error {
 	fmt.Println(disco.NowIn(time.Local).Format(true))
 	return nil
 }

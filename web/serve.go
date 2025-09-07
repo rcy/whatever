@@ -21,10 +21,10 @@ import (
 )
 
 type webservice struct {
-	app *app.Service
+	app *app.App
 }
 
-func Server(app *app.Service) *chi.Mux {
+func Server(app *app.App) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	svc := webservice{app: app}
@@ -90,7 +90,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 			h.Input(h.AutoFocus(), h.Name("text")),
 		),
 		h.Table(h.Class("striped"), h.TBody(
-			g.Map(noteList, func(note notes.Model) g.Node {
+			g.Map(noteList, func(note notes.Note) g.Node {
 				return h.Tr(
 					h.Td(h.A(h.Href("/notes/"+note.ID), g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
@@ -101,7 +101,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	}).Render(w)
 }
 
-func notesButtonsNode(note notes.Model) g.Node {
+func notesButtonsNode(note notes.Note) g.Node {
 	base := fmt.Sprintf("/notes/%s/set/", note.ID)
 	return h.Div(
 		g.Map([]string{"task", "reminder", "idea", "reference", "observation"},
@@ -132,7 +132,7 @@ func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request)
 
 	page(g.Group{
 		h.Table(h.Class("striped"), h.TBody(
-			g.Map(noteList, func(note notes.Model) g.Node {
+			g.Map(noteList, func(note notes.Note) g.Node {
 				return h.Tr(
 					h.Td(g.Text(note.ID[0:7])),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
@@ -195,7 +195,7 @@ func (s *webservice) postEditNoteHandler(w http.ResponseWriter, r *http.Request)
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 }
 
-func noteNode(note notes.Model, slot g.Node) g.Node {
+func noteNode(note notes.Note, slot g.Node) g.Node {
 	return page(g.Group{
 		h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
 			h.H6(g.Text(note.ID[0:7])),
