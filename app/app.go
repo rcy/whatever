@@ -3,14 +3,14 @@ package app
 import (
 	"log"
 
-	"github.com/rcy/whatever/app/notes"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/projections/notes"
 )
 
 type App struct {
-	Commands *commands.Service
 	Events   *flog.Service
+	Commands *commands.Service
 	Notes    *notes.Projection
 }
 

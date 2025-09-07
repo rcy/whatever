@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/app/notes"
+	"github.com/rcy/whatever/projections/notes"
 )
 
 type NotesCmd struct {
