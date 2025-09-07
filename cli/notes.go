@@ -54,7 +54,8 @@ func (c *ShowCmd) Run(app *app.App) error {
 	for _, e := range eventList {
 		fmt.Printf("%7s %s %-15s %v\n", "", e.CreatedAt.Local().Format(time.DateTime), e.EventType, string(e.EventData))
 	}
-	fmt.Println(note)
+
+	fmt.Printf("%s %s %s\n", note.ID[0:7], note.Ts.Local().Format(time.DateTime), note.Text)
 	return nil
 }
 

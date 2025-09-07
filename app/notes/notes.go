@@ -12,13 +12,9 @@ import (
 
 type Note struct {
 	ID       string    `db:"id"`
+	Ts       time.Time `db:"ts"`
 	Text     string    `db:"text"`
 	Category string    `db:"category"`
-	Ts       time.Time `db:"ts"`
-}
-
-func (m Note) String() string {
-	return fmt.Sprintf("%s %s %s", m.ID[0:7], m.Ts.Local().Format(time.DateTime), m.Text)
 }
 
 type Projection struct {
