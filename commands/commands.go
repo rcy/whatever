@@ -47,3 +47,16 @@ func (s *Service) UndeleteNote(id string) error {
 
 	return s.ES.InsertEvent("NoteUndeleted", "note", aggID, nil)
 }
+
+func (s *Service) UpdateNoteText(id string, text string) error {
+	aggID, err := s.ES.GetAggregateID(id)
+	if err != nil {
+		return err
+	}
+
+	err = s.ES.InsertEvent("NoteTextUpdated", "note", aggID, payloads.NoteTextUpdatedPayload{Text: text})
+	if err != nil {
+		return err
+	}
+	return nil
+}

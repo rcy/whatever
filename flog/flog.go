@@ -100,6 +100,10 @@ func (s *Service) RegisterHandler(eventType string, handler HandlerFunc) {
 	s.handlers[eventType] = append(s.handlers[eventType], handler)
 }
 
+type EventHandlerRegisterer interface {
+	RegisterHandler(string, HandlerFunc)
+}
+
 func (s *Service) GetAggregateIDs(prefix string) ([]string, error) {
 	var aggIDs []string
 	query := fmt.Sprintf("%s%%", prefix)

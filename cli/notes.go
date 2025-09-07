@@ -14,6 +14,7 @@ type NotesCmd struct {
 	Add      AddCmd      `cmd:""`
 	Delete   DeleteCmd   `cmd:"" aliases:"rm"`
 	Undelete UndeleteCmd `cmd:""`
+	Edit     EditCmd     `cmd:""`
 }
 
 type ListCmd struct {
@@ -44,7 +45,7 @@ func (c *ShowCmd) Run(app *app.Service) error {
 		return err
 	}
 	for _, e := range eventList {
-		fmt.Printf("%7s %s %s\n", "", e.CreatedAt.Local().Format(time.DateTime), e.EventType)
+		fmt.Printf("%7s %s %-15s %v\n", "", e.CreatedAt.Local().Format(time.DateTime), e.EventType, string(e.EventData))
 	}
 	fmt.Println(note)
 	return nil
@@ -57,6 +58,16 @@ type AddCmd struct {
 func (c *AddCmd) Run(app *app.Service) error {
 	aggID, err := app.CS.CreateNote(strings.Join(c.Text, " "))
 	fmt.Println(aggID)
+	return err
+}
+
+type EditCmd struct {
+	ID   string   `arg:""`
+	Text []string `arg:""`
+}
+
+func (c *EditCmd) Run(app *app.Service) error {
+	err := app.CS.UpdateNoteText(c.ID, strings.Join(c.Text, " "))
 	return err
 }
 

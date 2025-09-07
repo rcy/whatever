@@ -15,8 +15,6 @@ import (
 )
 
 func main() {
-	kctx := kong.Parse(&cli.CLI)
-
 	base, _ := os.UserConfigDir()
 	filename := base + "/whatever/flog.sqlite"
 	if !version.IsRelease() {
@@ -30,6 +28,7 @@ func main() {
 
 	as := app.New(commands.New(es), es)
 
+	kctx := kong.Parse(&cli.CLI)
 	err = kctx.Run(as)
 	kctx.FatalIfErrorf(err)
 }

@@ -20,10 +20,6 @@ func (m Model) String() string {
 	return fmt.Sprintf("%s %s %s", m.ID[0:7], m.Ts.Local().Format(time.DateTime), m.Text)
 }
 
-type EventHandlerRegisterer interface {
-	RegisterHandler(string, flog.HandlerFunc)
-}
-
 type Service struct {
 	db *sqlx.DB
 }
@@ -55,7 +51,7 @@ func (s *Service) FindAllDeleted() ([]Model, error) {
 	return noteList, nil
 }
 
-func Init(e EventHandlerRegisterer) (*Service, error) {
+func Init(e flog.EventHandlerRegisterer) (*Service, error) {
 	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		return nil, err
@@ -74,6 +70,7 @@ func Init(e EventHandlerRegisterer) (*Service, error) {
 	e.RegisterHandler("NoteCreated", s.updateNotesProjection)
 	e.RegisterHandler("NoteDeleted", s.updateNotesProjection)
 	e.RegisterHandler("NoteUndeleted", s.updateNotesProjection)
+	e.RegisterHandler("NoteTextUpdated", s.updateNotesProjection)
 
 	return s, nil
 }
@@ -81,11 +78,11 @@ func Init(e EventHandlerRegisterer) (*Service, error) {
 func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, _ bool) error {
 	switch event.EventType {
 	case "NoteCreated":
-		note, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)
+		payload, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)
 		if err != nil {
 			return err
 		}
-		_, err = s.db.Exec(`insert into notes(id, ts, text) values(?,?,?)`, event.AggregateID, event.CreatedAt, note.Text)
+		_, err = s.db.Exec(`insert into notes(id, ts, text) values(?,?,?)`, event.AggregateID, event.CreatedAt, payload.Text)
 		if err != nil {
 			return err
 		}
@@ -99,6 +96,19 @@ func (s *Service) updateNotesProjection(i flog.EventInserter, event flog.Model, 
 		return err
 	case "NoteUndeleted":
 		_, err := s.db.Exec(`insert into notes(id, ts, text) select id, ts, text from deleted_notes where id = ?`, event.AggregateID)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
+		return err
+	case "NoteTextUpdated":
+		payload, err := flog.UnmarshalPayload[payloads.NoteTextUpdatedPayload](event)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.db.Exec(`update notes set text = ? where id = ?`, payload.Text, event.AggregateID)
 		if err != nil {
 			return err
 		}

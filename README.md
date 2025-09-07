@@ -39,12 +39,18 @@ $ whatever notes
 9820beb 2025-09-06 12:27:54 think about going outside
 403361a 2025-09-06 12:28:31 https://www.youtube.com/watch?v=I8jfn8k8vpM
 
+$ whatever edit 403 cooontent
+$ whatever notes
+9820beb 2025-09-06 12:27:54 think about going outside
+403361a 2025-09-06 12:28:31 cooontent
+
 # show all events in the log
 $ whatever events
-1 9820b NoteCreated   2025-09-06T19:27:54Z {"Text":"think about going outside"}
-2 40336 NoteCreated   2025-09-06T19:28:31Z {"Text":"https://www.youtube.com/watch?v=I8jfn8k8vpM"}
-3 9820b NoteDeleted   2025-09-06T19:29:07Z null
-4 9820b NoteUndeleted 2025-09-06T19:29:29Z null
+1 9820b NoteCreated     2025-09-06T19:27:54Z {"Text":"think about going outside"}
+2 40336 NoteCreated     2025-09-06T19:28:31Z {"Text":"https://www.youtube.com/watch?v=I8jfn8k8vpM"}
+3 9820b NoteDeleted     2025-09-06T19:29:07Z null
+4 9820b NoteUndeleted   2025-09-06T19:29:29Z null
+4 9820b NoteTextUpdated 2025-09-06T19:29:29Z {"Text":"cooontent"}
 ```
 
 ### Discordian Date
