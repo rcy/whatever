@@ -12,7 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Model struct {
+type Event struct {
 	EventID       int       `db:"event_id"`
 	CreatedAt     time.Time `db:"created_at"`
 	AggregateType string    `db:"aggregate_type"`
@@ -85,7 +85,7 @@ func (s *Service) Close() error {
 	return s.db.Close()
 }
 
-type EventInserter interface {
+type Inserter interface {
 	InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error
 }
 
@@ -94,22 +94,22 @@ type ExecGetter interface {
 	Get(dest interface{}, query string, args ...interface{}) error
 }
 
-type HandlerFunc func(event Model, inserter EventInserter, replay bool) error
+type HandlerFunc func(event Event, inserter Inserter, replay bool) error
 
 func (s *Service) Subscribe(eventType string, handler HandlerFunc) {
 	s.handlers[eventType] = append(s.handlers[eventType], handler)
 }
 
-type EventSubscriber interface {
+type Subscriber interface {
 	Subscribe(string, HandlerFunc)
 }
 
-type ProjectionSubscriptionRegisterer interface {
-	RegisterEventSubscriptions(EventSubscriber)
+type ProjectionRegisterer interface {
+	Register(Subscriber)
 }
 
-func (s *Service) RegisterProjection(projection ProjectionSubscriptionRegisterer) {
-	projection.RegisterEventSubscriptions(s)
+func (s *Service) RegisterProjection(projection ProjectionRegisterer) {
+	projection.Register(s)
 }
 
 func (s *Service) GetAggregateIDs(prefix string) ([]string, error) {
@@ -137,8 +137,8 @@ func (s *Service) GetAggregateID(prefix string) (string, error) {
 	return aggIDs[0], nil
 }
 
-func (s *Service) LoadAggregateEvents(aggregateID string) ([]Model, error) {
-	var events []Model
+func (s *Service) LoadAggregateEvents(aggregateID string) ([]Event, error) {
+	var events []Event
 	err := s.db.Select(&events, `select * from events where aggregate_id = ? order by event_id asc`, aggregateID)
 	if err != nil {
 		return nil, err
@@ -146,8 +146,8 @@ func (s *Service) LoadAggregateEvents(aggregateID string) ([]Model, error) {
 	return events, nil
 }
 
-func (s *Service) LoadAllEvents(reverse bool) ([]Model, error) {
-	var events []Model
+func (s *Service) LoadAllEvents(reverse bool) ([]Event, error) {
+	var events []Event
 
 	var order string
 	if reverse {
@@ -168,7 +168,7 @@ func (s *Service) insertEventTx(e ExecGetter, eventType string, aggregateType st
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	var event Model
+	var event Event
 	err = e.Get(&event, `insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?) returning *`,
 		aggregateID,
 		aggregateType,
@@ -208,7 +208,7 @@ func (i InsertEventTxWrapper) InsertEvent(eventType string, aggregateType string
 	return i.s.insertEventTx(i.e, eventType, aggregateType, aggregateID, payload)
 }
 
-func (s *Service) runEventHandlers(e ExecGetter, event Model, replay bool) error {
+func (s *Service) runEventHandlers(e ExecGetter, event Event, replay bool) error {
 	if handlers, ok := s.handlers[event.EventType]; ok {
 		inserter := InsertEventTxWrapper{e: e, s: s}
 		for _, handle := range handlers {
@@ -222,7 +222,7 @@ func (s *Service) runEventHandlers(e ExecGetter, event Model, replay bool) error
 }
 
 func (s *Service) Replay() error {
-	events := []Model{}
+	events := []Event{}
 	if err := s.db.Select(&events, `select * from events order by event_id asc`); err != nil {
 		return err
 	}
@@ -236,7 +236,7 @@ func (s *Service) Replay() error {
 	return nil
 }
 
-func UnmarshalPayload[T any](event Model) (T, error) {
+func UnmarshalPayload[T any](event Event) (T, error) {
 	var payload T
 	err := json.Unmarshal([]byte(event.EventData), &payload)
 	return payload, err

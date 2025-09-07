@@ -15,7 +15,7 @@ type Service struct {
 }
 
 func New(cmds *commands.Service, events *flog.Service) *Service {
-	notes, err := notes.Init()
+	notes, err := notes.New()
 	if err != nil {
 		log.Fatal(err)
 	}

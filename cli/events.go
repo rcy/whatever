@@ -13,7 +13,7 @@ type EventsCmd struct {
 }
 
 func (c *EventsCmd) Run(app *app.Service) error {
-	var events []flog.Model
+	var events []flog.Event
 	if c.ID != "" {
 		aggID, err := app.Events.GetAggregateID(c.ID)
 		if err != nil {
