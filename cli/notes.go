@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rcy/whatever/app"
+	"github.com/rcy/whatever/app/notes"
 )
 
 type NotesCmd struct {
@@ -22,7 +23,13 @@ type ListCmd struct {
 }
 
 func (c *ListCmd) Run(app *app.Service) error {
-	noteList, err := app.NS.FindAll()
+	var noteList []notes.Model
+	var err error
+	if c.Deleted {
+		noteList, err = app.NS.FindAllDeleted()
+	} else {
+		noteList, err = app.NS.FindAll()
+	}
 	if err != nil {
 		return err
 	}
