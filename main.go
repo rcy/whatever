@@ -10,7 +10,7 @@ import (
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/cli"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/evoke"
 	"github.com/rcy/whatever/version"
 )
 
@@ -20,7 +20,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	es, err := flog.NewStore(flog.Config{DBFile: filename})
+	es, err := evoke.NewStore(evoke.Config{DBFile: filename})
 	if err != nil {
 		log.Fatal(err)
 	}

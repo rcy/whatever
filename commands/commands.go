@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/evoke"
 	"github.com/rcy/whatever/payloads"
 )
 
 type Service struct {
-	Events flog.Inserter
+	Events evoke.Inserter
 }
 
-func New(events flog.Inserter) *Service {
+func New(events evoke.Inserter) *Service {
 	return &Service{Events: events}
 }
 
 func (s *Service) CreateNote(text string) (string, error) {
-	aggID := flog.ID()
+	aggID := evoke.ID()
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return "", fmt.Errorf("text cannot be empty")

@@ -1,6 +1,7 @@
-package flog
+package evoke
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,12 @@ type Service struct {
 
 type Config struct {
 	DBFile string
+}
+
+func ID() string {
+	src := make([]byte, 20)
+	_, _ = rand.Read(src)
+	return fmt.Sprintf("%x", src)
 }
 
 func NewStore(config Config) (*Service, error) {

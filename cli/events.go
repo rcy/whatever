@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/evoke"
 )
 
 type EventsCmd struct {
@@ -13,7 +13,7 @@ type EventsCmd struct {
 }
 
 func (c *EventsCmd) Run(app *app.App) error {
-	var events []flog.Event
+	var events []evoke.Event
 	if c.ID != "" {
 		aggID, err := app.Events.GetAggregateID(c.ID)
 		if err != nil {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/evoke"
 	"github.com/rcy/whatever/payloads"
 	_ "modernc.org/sqlite"
 )
@@ -66,7 +66,7 @@ func New() (*Projection, error) {
 }
 
 // Register this projection with the event system by subscribing to events
-func (p *Projection) Register(e flog.Subscriber) {
+func (p *Projection) Register(e evoke.Subscriber) {
 	e.Subscribe(payloads.NoteCreated, p.updateNotes)
 	e.Subscribe(payloads.NoteDeleted, p.updateNotes)
 	e.Subscribe(payloads.NoteUndeleted, p.updateNotes)
@@ -74,10 +74,10 @@ func (p *Projection) Register(e flog.Subscriber) {
 	e.Subscribe(payloads.NoteCategoryChanged, p.updateNotes)
 }
 
-func (p *Projection) updateNotes(event flog.Event, _ flog.Inserter, _ bool) error {
+func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) error {
 	switch event.EventType {
 	case payloads.NoteCreated:
-		payload, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)
+		payload, err := evoke.UnmarshalPayload[payloads.NoteCreatedPayload](event)
 		if err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func (p *Projection) updateNotes(event flog.Event, _ flog.Inserter, _ bool) erro
 		_, err = p.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
 		return err
 	case payloads.NoteTextUpdated:
-		payload, err := flog.UnmarshalPayload[payloads.NoteTextUpdatedPayload](event)
+		payload, err := evoke.UnmarshalPayload[payloads.NoteTextUpdatedPayload](event)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func (p *Projection) updateNotes(event flog.Event, _ flog.Inserter, _ bool) erro
 		}
 		return err
 	case payloads.NoteCategoryChanged:
-		payload, err := flog.UnmarshalPayload[payloads.NoteCategoryChangedPayload](event)
+		payload, err := evoke.UnmarshalPayload[payloads.NoteCategoryChangedPayload](event)
 		if err != nil {
 			return err
 		}

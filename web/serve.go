@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/flog"
+	"github.com/rcy/whatever/evoke"
 	"github.com/rcy/whatever/projections/notes"
 	"github.com/rcy/whatever/version"
 	g "maragu.dev/gomponents"
@@ -257,7 +257,7 @@ func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	page(g.Group{
 		h.Table(
 			h.Body(
-				g.Map(events, func(event flog.Event) g.Node {
+				g.Map(events, func(event evoke.Event) g.Node {
 					return h.Tr(
 						h.Td(g.Text(fmt.Sprint(event.EventID))),
 						h.Td(h.A(h.Code(g.Text(event.AggregateID[0:7])))),
