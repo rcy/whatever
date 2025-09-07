@@ -1,22 +1,22 @@
 package payloads
 
-const NoteDeleted = "NoteDeleted"
+import "github.com/rcy/whatever/evoke"
 
-const NoteUndeleted = "NoteUndeleted"
-
-const NoteCreated = "NoteCreated"
-
-type NoteCreatedPayload struct {
-	Text string
-}
-
-const NoteTextUpdated = "NoteTextUpdated"
+var (
+	NoteCreated         = evoke.RegisterEvent("NoteCreated", "note", NoteCreatedPayload{})
+	NoteDeleted         = evoke.RegisterEvent("NoteDeleted", "note", nil)
+	NoteUndeleted       = evoke.RegisterEvent("NoteUndeleted", "note", nil)
+	NoteTextUpdated     = evoke.RegisterEvent("NoteTextUpdated", "note", NoteTextUpdatedPayload{})
+	NoteCategoryChanged = evoke.RegisterEvent("NoteCategoryChanged", "note", NoteCategoryChangedPayload{})
+)
 
 type NoteTextUpdatedPayload struct {
 	Text string
 }
 
-const NoteCategoryChanged = "NoteCategoryChanged"
+type NoteCreatedPayload struct {
+	Text string
+}
 
 type NoteCategoryChangedPayload struct {
 	Category string
