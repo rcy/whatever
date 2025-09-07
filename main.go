@@ -26,7 +26,9 @@ func main() {
 	}
 	defer es.Close()
 
-	as := app.New(commands.New(es), es)
+	cs := commands.New(es)
+
+	as := app.New(cs, es)
 
 	kctx := kong.Parse(&cli.CLI)
 	err = kctx.Run(as)
