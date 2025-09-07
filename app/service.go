@@ -9,9 +9,9 @@ import (
 )
 
 type Service struct {
-	NS *notes.Service
-	CS *commands.Service
-	ES *flog.Service
+	Commands *commands.Service
+	Events   *flog.Service
+	Notes    *notes.Service
 }
 
 func New(cs *commands.Service, es *flog.Service) *Service {
@@ -25,5 +25,5 @@ func New(cs *commands.Service, es *flog.Service) *Service {
 		log.Fatal(err)
 	}
 
-	return &Service{NS: ns, CS: cs, ES: es}
+	return &Service{Notes: ns, Commands: cs, Events: es}
 }

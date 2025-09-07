@@ -10,11 +10,11 @@ import (
 )
 
 type Service struct {
-	ES *flog.Service
+	Events *flog.Service
 }
 
 func New(es *flog.Service) *Service {
-	return &Service{ES: es}
+	return &Service{Events: es}
 }
 
 func (s *Service) CreateNote(text string) (string, error) {
@@ -23,7 +23,7 @@ func (s *Service) CreateNote(text string) (string, error) {
 	if text == "" {
 		return "", fmt.Errorf("text cannot be empty")
 	}
-	err := s.ES.InsertEvent(payloads.NoteCreated, "note", aggID, payloads.NoteCreatedPayload{Text: text})
+	err := s.Events.InsertEvent(payloads.NoteCreated, "note", aggID, payloads.NoteCreatedPayload{Text: text})
 	if err != nil {
 		return "", err
 	}
@@ -31,30 +31,30 @@ func (s *Service) CreateNote(text string) (string, error) {
 }
 
 func (s *Service) DeleteNote(id string) error {
-	aggID, err := s.ES.GetAggregateID(id)
+	aggID, err := s.Events.GetAggregateID(id)
 	if err != nil {
 		return err
 	}
 
-	return s.ES.InsertEvent(payloads.NoteDeleted, "note", aggID, nil)
+	return s.Events.InsertEvent(payloads.NoteDeleted, "note", aggID, nil)
 }
 
 func (s *Service) UndeleteNote(id string) error {
-	aggID, err := s.ES.GetAggregateID(id)
+	aggID, err := s.Events.GetAggregateID(id)
 	if err != nil {
 		return err
 	}
 
-	return s.ES.InsertEvent(payloads.NoteUndeleted, "note", aggID, nil)
+	return s.Events.InsertEvent(payloads.NoteUndeleted, "note", aggID, nil)
 }
 
 func (s *Service) UpdateNoteText(id string, text string) error {
-	aggID, err := s.ES.GetAggregateID(id)
+	aggID, err := s.Events.GetAggregateID(id)
 	if err != nil {
 		return err
 	}
 
-	err = s.ES.InsertEvent(payloads.NoteTextUpdated, "note", aggID, payloads.NoteTextUpdatedPayload{Text: text})
+	err = s.Events.InsertEvent(payloads.NoteTextUpdated, "note", aggID, payloads.NoteTextUpdatedPayload{Text: text})
 	if err != nil {
 		return err
 	}
@@ -62,12 +62,12 @@ func (s *Service) UpdateNoteText(id string, text string) error {
 }
 
 func (s *Service) SetNoteCategory(id string, text string) error {
-	aggID, err := s.ES.GetAggregateID(id)
+	aggID, err := s.Events.GetAggregateID(id)
 	if err != nil {
 		return err
 	}
 
-	err = s.ES.InsertEvent(payloads.NoteCategoryChanged, "note", aggID, payloads.NoteCategoryChangedPayload{Category: text})
+	err = s.Events.InsertEvent(payloads.NoteCategoryChanged, "note", aggID, payloads.NoteCategoryChangedPayload{Category: text})
 	if err != nil {
 		return err
 	}
