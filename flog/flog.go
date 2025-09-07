@@ -96,12 +96,20 @@ type ExecGetter interface {
 
 type HandlerFunc func(event Model, inserter EventInserter, replay bool) error
 
-func (s *Service) RegisterHandler(eventType string, handler HandlerFunc) {
+func (s *Service) Subscribe(eventType string, handler HandlerFunc) {
 	s.handlers[eventType] = append(s.handlers[eventType], handler)
 }
 
-type EventHandlerRegisterer interface {
-	RegisterHandler(string, HandlerFunc)
+type EventSubscriber interface {
+	Subscribe(string, HandlerFunc)
+}
+
+type ProjectionSubscriptionRegisterer interface {
+	RegisterEventSubscriptions(EventSubscriber)
+}
+
+func (s *Service) RegisterProjection(projection ProjectionSubscriptionRegisterer) {
+	projection.RegisterEventSubscriptions(s)
 }
 
 func (s *Service) GetAggregateIDs(prefix string) ([]string, error) {
@@ -213,7 +221,7 @@ func (s *Service) runEventHandlers(e ExecGetter, event Model, replay bool) error
 	return nil
 }
 
-func (s *Service) ReplayEvents() error {
+func (s *Service) Replay() error {
 	events := []Model{}
 	if err := s.db.Select(&events, `select * from events order by event_id asc`); err != nil {
 		return err

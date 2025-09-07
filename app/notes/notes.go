@@ -52,7 +52,7 @@ func (s *Service) FindAllDeleted() ([]Model, error) {
 	return noteList, nil
 }
 
-func Init(e flog.EventHandlerRegisterer) (*Service, error) {
+func Init() (*Service, error) {
 	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		return nil, err
@@ -68,13 +68,16 @@ func Init(e flog.EventHandlerRegisterer) (*Service, error) {
 
 	s := &Service{db: db}
 
-	e.RegisterHandler(payloads.NoteCreated, s.updateNotesProjection)
-	e.RegisterHandler(payloads.NoteDeleted, s.updateNotesProjection)
-	e.RegisterHandler(payloads.NoteUndeleted, s.updateNotesProjection)
-	e.RegisterHandler(payloads.NoteTextUpdated, s.updateNotesProjection)
-	e.RegisterHandler(payloads.NoteCategoryChanged, s.updateNotesProjection)
-
 	return s, nil
+}
+
+// Register this projection with the event system by subscribing to events
+func (s *Service) RegisterEventSubscriptions(e flog.EventSubscriber) {
+	e.Subscribe(payloads.NoteCreated, s.updateNotesProjection)
+	e.Subscribe(payloads.NoteDeleted, s.updateNotesProjection)
+	e.Subscribe(payloads.NoteUndeleted, s.updateNotesProjection)
+	e.Subscribe(payloads.NoteTextUpdated, s.updateNotesProjection)
+	e.Subscribe(payloads.NoteCategoryChanged, s.updateNotesProjection)
 }
 
 func (s *Service) updateNotesProjection(event flog.Model, _ flog.EventInserter, _ bool) error {

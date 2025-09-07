@@ -14,16 +14,22 @@ type Service struct {
 	Notes    *notes.Service
 }
 
-func New(cs *commands.Service, es *flog.Service) *Service {
-	ns, err := notes.Init(es)
+func New(cmds *commands.Service, events *flog.Service) *Service {
+	notes, err := notes.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = es.ReplayEvents()
+	events.RegisterProjection(notes)
+
+	err = events.Replay()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return &Service{Notes: ns, Commands: cs, Events: es}
+	return &Service{
+		Commands: cmds,
+		Events:   events,
+		Notes:    notes,
+	}
 }
