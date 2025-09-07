@@ -11,7 +11,7 @@ import (
 type Service struct {
 	Commands *commands.Service
 	Events   *flog.Service
-	Notes    *notes.Service
+	Notes    *notes.Projection
 }
 
 func New(cmds *commands.Service, events *flog.Service) *Service {

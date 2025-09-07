@@ -21,11 +21,11 @@ func (m Model) String() string {
 	return fmt.Sprintf("%s %s %s", m.ID[0:7], m.Ts.Local().Format(time.DateTime), m.Text)
 }
 
-type Service struct {
+type Projection struct {
 	db *sqlx.DB
 }
 
-func (s *Service) FindOne(id string) (Model, error) {
+func (s *Projection) FindOne(id string) (Model, error) {
 	var note Model
 	err := s.db.Get(&note, `select * from notes where id = ?`, id)
 	if err != nil {
@@ -34,7 +34,7 @@ func (s *Service) FindOne(id string) (Model, error) {
 	return note, nil
 }
 
-func (s *Service) FindAll() ([]Model, error) {
+func (s *Projection) FindAll() ([]Model, error) {
 	var noteList []Model
 	err := s.db.Select(&noteList, `select * from notes order by ts asc`)
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *Service) FindAll() ([]Model, error) {
 	return noteList, nil
 }
 
-func (s *Service) FindAllDeleted() ([]Model, error) {
+func (s *Projection) FindAllDeleted() ([]Model, error) {
 	var noteList []Model
 	err := s.db.Select(&noteList, `select * from deleted_notes order by ts asc`)
 	if err != nil {
@@ -52,7 +52,7 @@ func (s *Service) FindAllDeleted() ([]Model, error) {
 	return noteList, nil
 }
 
-func Init() (*Service, error) {
+func Init() (*Projection, error) {
 	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		return nil, err
@@ -66,13 +66,13 @@ func Init() (*Service, error) {
 		return nil, err
 	}
 
-	s := &Service{db: db}
+	s := &Projection{db: db}
 
 	return s, nil
 }
 
 // Register this projection with the event system by subscribing to events
-func (s *Service) RegisterEventSubscriptions(e flog.EventSubscriber) {
+func (s *Projection) RegisterEventSubscriptions(e flog.EventSubscriber) {
 	e.Subscribe(payloads.NoteCreated, s.updateNotesProjection)
 	e.Subscribe(payloads.NoteDeleted, s.updateNotesProjection)
 	e.Subscribe(payloads.NoteUndeleted, s.updateNotesProjection)
@@ -80,7 +80,7 @@ func (s *Service) RegisterEventSubscriptions(e flog.EventSubscriber) {
 	e.Subscribe(payloads.NoteCategoryChanged, s.updateNotesProjection)
 }
 
-func (s *Service) updateNotesProjection(event flog.Model, _ flog.EventInserter, _ bool) error {
+func (s *Projection) updateNotesProjection(event flog.Model, _ flog.EventInserter, _ bool) error {
 	switch event.EventType {
 	case payloads.NoteCreated:
 		payload, err := flog.UnmarshalPayload[payloads.NoteCreatedPayload](event)
