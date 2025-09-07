@@ -86,7 +86,8 @@ func (s *Service) Close() error {
 }
 
 type Inserter interface {
-	InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error
+	Insert(eventType string, aggregateType string, aggregateID string, payload any) error
+	GetAggregateID(prefix string) (string, error)
 }
 
 type ExecGetter interface {
@@ -162,7 +163,7 @@ func (s *Service) LoadAllEvents(reverse bool) ([]Event, error) {
 	return events, nil
 }
 
-func (s *Service) insertEventTx(e ExecGetter, eventType string, aggregateType string, aggregateID string, payload any) error {
+func (s *Service) insertTx(e ExecGetter, eventType string, aggregateType string, aggregateID string, payload any) error {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
@@ -184,33 +185,37 @@ func (s *Service) insertEventTx(e ExecGetter, eventType string, aggregateType st
 	return nil
 }
 
-func (s *Service) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
+func (s *Service) Insert(eventType string, aggregateType string, aggregateID string, payload any) error {
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("Begin: %w", err)
 	}
 	defer tx.Rollback()
 
-	err = s.insertEventTx(tx, eventType, aggregateType, aggregateID, payload)
+	err = s.insertTx(tx, eventType, aggregateType, aggregateID, payload)
 	if err != nil {
-		return fmt.Errorf("InsertEventTx: %w", err)
+		return fmt.Errorf("InsertTx: %w", err)
 	}
 
 	return tx.Commit()
 }
 
-type InsertEventTxWrapper struct {
+type InsertTxWrapper struct {
 	e ExecGetter
 	s *Service
 }
 
-func (i InsertEventTxWrapper) InsertEvent(eventType string, aggregateType string, aggregateID string, payload any) error {
-	return i.s.insertEventTx(i.e, eventType, aggregateType, aggregateID, payload)
+func (i InsertTxWrapper) Insert(eventType string, aggregateType string, aggregateID string, payload any) error {
+	return i.s.insertTx(i.e, eventType, aggregateType, aggregateID, payload)
+}
+
+func (i InsertTxWrapper) GetAggregateID(prefix string) (string, error) {
+	return i.s.GetAggregateID(prefix)
 }
 
 func (s *Service) runEventHandlers(e ExecGetter, event Event, replay bool) error {
 	if handlers, ok := s.handlers[event.EventType]; ok {
-		inserter := InsertEventTxWrapper{e: e, s: s}
+		inserter := InsertTxWrapper{e: e, s: s}
 		for _, handle := range handlers {
 			err := handle(event, inserter, replay)
 			if err != nil {
