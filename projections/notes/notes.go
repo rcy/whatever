@@ -67,17 +67,17 @@ func New() (*Projection, error) {
 
 // Register this projection with the event system by subscribing to events
 func (p *Projection) Register(e evoke.Subscriber) {
-	e.Subscribe(events.NoteCreated, p.updateNotes)
-	e.Subscribe(events.NoteDeleted, p.updateNotes)
-	e.Subscribe(events.NoteUndeleted, p.updateNotes)
-	e.Subscribe(events.NoteTextUpdated, p.updateNotes)
-	e.Subscribe(events.NoteCategoryChanged, p.updateNotes)
+	e.Subscribe(events.NoteCreated{}, p.updateNotes)
+	e.Subscribe(events.NoteDeleted{}, p.updateNotes)
+	e.Subscribe(events.NoteUndeleted{}, p.updateNotes)
+	e.Subscribe(events.NoteTextUpdated{}, p.updateNotes)
+	e.Subscribe(events.NoteCategoryChanged{}, p.updateNotes)
 }
 
 func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) error {
 	switch event.EventType {
-	case events.NoteCreated.Name:
-		payload, err := evoke.UnmarshalPayload[events.NoteCreatedPayload](event)
+	case events.NoteCreated{}.EventType():
+		payload, err := evoke.UnmarshalPayload[events.NoteCreated](event)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) er
 		if err != nil {
 			return err
 		}
-	case events.NoteDeleted.Name:
+	case events.NoteDeleted{}.EventType():
 		_, err := p.db.Exec(`insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`, event.AggregateID)
 		if err != nil {
 			return err
@@ -93,7 +93,7 @@ func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) er
 
 		_, err = p.db.Exec(`delete from notes where id = ?`, event.AggregateID)
 		return err
-	case events.NoteUndeleted.Name:
+	case events.NoteUndeleted{}.EventType():
 		_, err := p.db.Exec(`insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`, event.AggregateID)
 		if err != nil {
 			return err
@@ -101,8 +101,8 @@ func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) er
 
 		_, err = p.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
 		return err
-	case events.NoteTextUpdated.Name:
-		payload, err := evoke.UnmarshalPayload[events.NoteTextUpdatedPayload](event)
+	case events.NoteTextUpdated{}.EventType():
+		payload, err := evoke.UnmarshalPayload[events.NoteTextUpdated](event)
 		if err != nil {
 			return err
 		}
@@ -112,8 +112,8 @@ func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) er
 			return err
 		}
 		return err
-	case events.NoteCategoryChanged.Name:
-		payload, err := evoke.UnmarshalPayload[events.NoteCategoryChangedPayload](event)
+	case events.NoteCategoryChanged{}.EventType():
+		payload, err := evoke.UnmarshalPayload[events.NoteCategoryChanged](event)
 		if err != nil {
 			return err
 		}

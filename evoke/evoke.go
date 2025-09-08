@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -93,8 +92,14 @@ func (s *Service) Close() error {
 	return s.db.Close()
 }
 
+// Event payloads must implement this interface
+type EventDefiner interface {
+	EventType() string
+	Aggregate() string
+}
+
 type Inserter interface {
-	Insert(aggregateID string, ed EventDefinition, payload any) error
+	Insert(aggregateID string, def EventDefiner) error
 	GetAggregateID(prefix string) (string, error)
 }
 
@@ -105,12 +110,12 @@ type ExecGetter interface {
 
 type HandlerFunc func(event Event, inserter Inserter, replay bool) error
 
-func (s *Service) Subscribe(ed EventDefinition, handler HandlerFunc) {
-	s.handlers[ed.Name] = append(s.handlers[ed.Name], handler)
+func (s *Service) Subscribe(ed EventDefiner, handler HandlerFunc) {
+	s.handlers[ed.EventType()] = append(s.handlers[ed.EventType()], handler)
 }
 
 type Subscriber interface {
-	Subscribe(EventDefinition, HandlerFunc)
+	Subscribe(EventDefiner, HandlerFunc)
 }
 
 type ProjectionRegisterer interface {
@@ -171,11 +176,7 @@ func (s *Service) LoadAllEvents(reverse bool) ([]Event, error) {
 	return events, nil
 }
 
-func (s *Service) insertTx(e ExecGetter, aggregateID string, ed EventDefinition, payload any) error {
-	if ed.PayloadType != reflect.TypeOf(payload) {
-		return fmt.Errorf("payload type mismatch, want:%s got:%s", ed.PayloadType, reflect.TypeOf(payload))
-	}
-
+func (s *Service) insertTx(e ExecGetter, aggregateID string, payload EventDefiner) error {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
@@ -184,8 +185,8 @@ func (s *Service) insertTx(e ExecGetter, aggregateID string, ed EventDefinition,
 	var event Event
 	err = e.Get(&event, `insert into events(aggregate_id, aggregate_type, event_type, event_data) values (?,?,?,?) returning *`,
 		aggregateID,
-		ed.Aggregate,
-		ed.Name,
+		payload.Aggregate(),
+		payload.EventType(),
 		string(bytes)) // Q: why string bytes? sqlite thing?
 	if err != nil {
 		return fmt.Errorf("db.Exec: %w", err)
@@ -198,14 +199,14 @@ func (s *Service) insertTx(e ExecGetter, aggregateID string, ed EventDefinition,
 	return nil
 }
 
-func (s *Service) Insert(aggregateID string, ed EventDefinition, payload any) error {
+func (s *Service) Insert(aggregateID string, payload EventDefiner) error {
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("Begin: %w", err)
 	}
 	defer tx.Rollback()
 
-	err = s.insertTx(tx, aggregateID, ed, payload)
+	err = s.insertTx(tx, aggregateID, payload)
 	if err != nil {
 		return fmt.Errorf("InsertTx: %w", err)
 	}
@@ -218,8 +219,8 @@ type InsertTxWrapper struct {
 	s *Service
 }
 
-func (i InsertTxWrapper) Insert(aggregateID string, ed EventDefinition, payload any) error {
-	return i.s.insertTx(i.e, aggregateID, ed, payload)
+func (i InsertTxWrapper) Insert(aggregateID string, payload EventDefiner) error {
+	return i.s.insertTx(i.e, aggregateID, payload)
 }
 
 func (i InsertTxWrapper) GetAggregateID(prefix string) (string, error) {

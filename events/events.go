@@ -1,23 +1,33 @@
 package events
 
-import "github.com/rcy/whatever/evoke"
+var NoteAggregate = "note"
 
-var (
-	NoteCreated         = evoke.RegisterEvent("NoteCreated", "note", NoteCreatedPayload{})
-	NoteDeleted         = evoke.RegisterEvent("NoteDeleted", "note", nil)
-	NoteUndeleted       = evoke.RegisterEvent("NoteUndeleted", "note", nil)
-	NoteTextUpdated     = evoke.RegisterEvent("NoteTextUpdated", "note", NoteTextUpdatedPayload{})
-	NoteCategoryChanged = evoke.RegisterEvent("NoteCategoryChanged", "note", NoteCategoryChangedPayload{})
-)
+// NoteCreated
+type NoteCreated struct{ Text string }
 
-type NoteTextUpdatedPayload struct {
-	Text string
-}
+func (NoteCreated) EventType() string { return "NoteCreated" }
+func (NoteCreated) Aggregate() string { return NoteAggregate }
 
-type NoteCreatedPayload struct {
-	Text string
-}
+// NoteTextUpdated
+type NoteTextUpdated struct{ Text string }
 
-type NoteCategoryChangedPayload struct {
-	Category string
-}
+func (NoteTextUpdated) EventType() string { return "NoteTextUpdated" }
+func (NoteTextUpdated) Aggregate() string { return NoteAggregate }
+
+// NoteDeleted
+type NoteDeleted struct{}
+
+func (NoteDeleted) EventType() string { return "NoteDeleted" }
+func (NoteDeleted) Aggregate() string { return NoteAggregate }
+
+// NoteUndeleted
+type NoteUndeleted struct{}
+
+func (NoteUndeleted) EventType() string { return "NoteUndeleted" }
+func (NoteUndeleted) Aggregate() string { return NoteAggregate }
+
+// NoteCategoryChanged
+type NoteCategoryChanged struct{ Category string }
+
+func (NoteCategoryChanged) EventType() string { return "NoteCategoryChanged" }
+func (NoteCategoryChanged) Aggregate() string { return NoteAggregate }

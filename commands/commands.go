@@ -22,7 +22,7 @@ func (s *Service) CreateNote(text string) (string, error) {
 	if text == "" {
 		return "", fmt.Errorf("text cannot be empty")
 	}
-	err := s.Events.Insert(aggID, events.NoteCreated, events.NoteCreatedPayload{Text: text})
+	err := s.Events.Insert(aggID, events.NoteCreated{Text: text})
 	if err != nil {
 		return "", err
 	}
@@ -35,7 +35,7 @@ func (s *Service) DeleteNote(id string) error {
 		return err
 	}
 
-	return s.Events.Insert(aggID, events.NoteDeleted, nil)
+	return s.Events.Insert(aggID, events.NoteDeleted{})
 }
 
 func (s *Service) UndeleteNote(id string) error {
@@ -44,7 +44,7 @@ func (s *Service) UndeleteNote(id string) error {
 		return err
 	}
 
-	return s.Events.Insert(aggID, events.NoteUndeleted, nil)
+	return s.Events.Insert(aggID, events.NoteUndeleted{})
 }
 
 func (s *Service) UpdateNoteText(id string, text string) error {
@@ -53,7 +53,7 @@ func (s *Service) UpdateNoteText(id string, text string) error {
 		return err
 	}
 
-	err = s.Events.Insert(aggID, events.NoteTextUpdated, events.NoteTextUpdatedPayload{Text: text})
+	err = s.Events.Insert(aggID, events.NoteTextUpdated{Text: text})
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (s *Service) SetNoteCategory(id string, text string) error {
 		return err
 	}
 
-	err = s.Events.Insert(aggID, events.NoteCategoryChanged, events.NoteCategoryChangedPayload{Category: text})
+	err = s.Events.Insert(aggID, events.NoteCategoryChanged{Category: text})
 	if err != nil {
 		return err
 	}
