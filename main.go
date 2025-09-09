@@ -4,13 +4,11 @@ import (
 	"log"
 	"os"
 
-	_ "modernc.org/sqlite"
-
 	"github.com/alecthomas/kong"
+	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/cli"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/evoke"
 	"github.com/rcy/whatever/version"
 )
 

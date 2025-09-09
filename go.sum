@@ -32,6 +32,10 @@ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c h1:+mdjkGKdHQG3305AYmd
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjLxUqIJNnCWiEdr3bn6IUYi15bNlnbCCU=
 github.com/rcy/disco v0.2.2 h1:JcRP9kXK/JvAbPRIQZOWjdVceGe5ahWg253eVAkKLy0=
 github.com/rcy/disco v0.2.2/go.mod h1:4MELSLJPhFk1mLy4cWcMontGHYPuFor16PiRx4QcM1g=
+github.com/rcy/evoke v0.0.0-20250909053507-943515dc2eff h1:C7FSxnppE2kdAzpPJg/iVeGz05t+humzS+sXWDw5yxw=
+github.com/rcy/evoke v0.0.0-20250909053507-943515dc2eff/go.mod h1:hIozgIDP1S5EBFtZGNCY6t2VWexdBH4ffkAFMWOV/Oo=
+github.com/rcy/evoke v0.0.3 h1:AT6lZLP0lTAbiBRZaSXAk04lOf+dzsUlJpFkPAyRyOk=
+github.com/rcy/evoke v0.0.3/go.mod h1:hIozgIDP1S5EBFtZGNCY6t2VWexdBH4ffkAFMWOV/Oo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b h1:M2rDM6z3Fhozi9O7NWsxAkg/yqS/lQJ6PmkyIV3YP+o=

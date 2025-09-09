@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/events"
-	"github.com/rcy/whatever/evoke"
 )
 
 type Service struct {

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/events"
-	"github.com/rcy/whatever/evoke"
 	_ "modernc.org/sqlite"
 )
 
@@ -48,7 +48,7 @@ func (p *Projection) FindAllDeleted() ([]Note, error) {
 	return noteList, nil
 }
 
-func New() (*Projection, error) {
+func New(e *evoke.Service) (*Projection, error) {
 	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		return nil, err
@@ -65,66 +65,76 @@ func New() (*Projection, error) {
 	return &Projection{db: db}, nil
 }
 
-// Register this projection with the event system by subscribing to events
-func (p *Projection) Register(e evoke.Subscriber) {
-	e.Subscribe(events.NoteCreated{}, p.updateNotes)
-	e.Subscribe(events.NoteDeleted{}, p.updateNotes)
-	e.Subscribe(events.NoteUndeleted{}, p.updateNotes)
-	e.Subscribe(events.NoteTextUpdated{}, p.updateNotes)
-	e.Subscribe(events.NoteCategoryChanged{}, p.updateNotes)
+func (p *Projection) Subscribe(e *evoke.Service) error {
+	err := e.Subscribe(events.NoteCreated{}, p.noteCreated)
+	if err != nil {
+		return err
+	}
+	err = e.Subscribe(events.NoteDeleted{}, p.noteDeleted)
+	if err != nil {
+		return err
+	}
+	err = e.Subscribe(events.NoteUndeleted{}, p.noteUndeleted)
+	if err != nil {
+		return err
+	}
+	err = e.Subscribe(events.NoteTextUpdated{}, p.noteTextUpdated)
+	if err != nil {
+		return err
+	}
+	err = e.Subscribe(events.NoteCategoryChanged{}, p.noteCategoryChanged)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (p *Projection) updateNotes(event evoke.Event, _ evoke.Inserter, _ bool) error {
-	switch event.EventType {
-	case events.NoteCreated{}.EventType():
-		payload, err := evoke.UnmarshalPayload[events.NoteCreated](event)
-		if err != nil {
-			return err
-		}
-		_, err = p.db.Exec(`insert into notes(id, ts, text, category) values(?,?,?,?)`, event.AggregateID, event.CreatedAt, payload.Text, "inbox")
-		if err != nil {
-			return err
-		}
-	case events.NoteDeleted{}.EventType():
-		_, err := p.db.Exec(`insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`, event.AggregateID)
-		if err != nil {
-			return err
-		}
-
-		_, err = p.db.Exec(`delete from notes where id = ?`, event.AggregateID)
+func (p *Projection) noteCreated(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	payload, err := evoke.UnmarshalPayload[events.NoteCreated](event)
+	if err != nil {
 		return err
-	case events.NoteUndeleted{}.EventType():
-		_, err := p.db.Exec(`insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`, event.AggregateID)
-		if err != nil {
-			return err
-		}
-
-		_, err = p.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
-		return err
-	case events.NoteTextUpdated{}.EventType():
-		payload, err := evoke.UnmarshalPayload[events.NoteTextUpdated](event)
-		if err != nil {
-			return err
-		}
-
-		_, err = p.db.Exec(`update notes set text = ? where id = ?`, payload.Text, event.AggregateID)
-		if err != nil {
-			return err
-		}
-		return err
-	case events.NoteCategoryChanged{}.EventType():
-		payload, err := evoke.UnmarshalPayload[events.NoteCategoryChanged](event)
-		if err != nil {
-			return err
-		}
-
-		_, err = p.db.Exec(`update notes set category = ? where id = ?`, payload.Category, event.AggregateID)
-		if err != nil {
-			return err
-		}
-		return err
-	default:
-		return fmt.Errorf("EventType not handled")
 	}
+	_, err = p.db.Exec(`insert into notes(id, ts, text, category) values(?,?,?,?)`, event.AggregateID, event.CreatedAt, payload.Text, "inbox")
 	return nil
+}
+
+func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	_, err := p.db.Exec(`insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`, event.AggregateID)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.db.Exec(`delete from notes where id = ?`, event.AggregateID)
+	return err
+}
+
+func (p *Projection) noteUndeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	_, err := p.db.Exec(`insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`, event.AggregateID)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.db.Exec(`delete from deleted_notes where id = ?`, event.AggregateID)
+	return err
+}
+
+func (p *Projection) noteTextUpdated(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	payload, err := evoke.UnmarshalPayload[events.NoteTextUpdated](event)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.db.Exec(`update notes set text = ? where id = ?`, payload.Text, event.AggregateID)
+	return nil
+}
+
+func (p *Projection) noteCategoryChanged(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	payload, err := evoke.UnmarshalPayload[events.NoteCategoryChanged](event)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.db.Exec(`update notes set category = ? where id = ?`, payload.Category, event.AggregateID)
+	return err
 }

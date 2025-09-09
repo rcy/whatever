@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/evoke"
 )
 
 type EventsCmd struct {

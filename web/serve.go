@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/evoke"
 	"github.com/rcy/whatever/projections/notes"
 	"github.com/rcy/whatever/version"
 	g "maragu.dev/gomponents"
