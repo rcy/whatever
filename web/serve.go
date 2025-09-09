@@ -78,10 +78,22 @@ func page(main g.Node) g.Node {
 }
 
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
-	noteList, err := s.app.Notes.FindAll()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	category := r.FormValue("category")
+
+	var noteList []notes.Note
+	var err error
+	if category == "" {
+		noteList, err = s.app.Notes.FindAll()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		noteList, err = s.app.Notes.FindAllByCategory(category)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	slices.Reverse(noteList)
 
@@ -106,7 +118,10 @@ func notesButtonsNode(note notes.Note) g.Node {
 	return h.Div(
 		g.Map([]string{"task", "reminder", "idea", "reference", "observation"},
 			func(category string) g.Node {
-				return h.Button(g.Text(category), g.Attr("hx-post", base+category))
+				return h.Button(
+					g.Text(category),
+					g.Attr("hx-post", base+category),
+				)
 			}),
 	)
 }

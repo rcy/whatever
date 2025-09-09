@@ -39,6 +39,15 @@ func (p *Projection) FindAll() ([]Note, error) {
 	return noteList, nil
 }
 
+func (p *Projection) FindAllByCategory(category string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList, `select * from notes where category = ? order by ts asc`, category)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes: %w", err)
+	}
+	return noteList, nil
+}
+
 func (p *Projection) FindAllDeleted() ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from deleted_notes order by ts asc`)
