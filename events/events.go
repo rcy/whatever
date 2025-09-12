@@ -1,6 +1,6 @@
 package events
 
-var NoteAggregate = "note"
+const NoteAggregate = "note"
 
 // NoteCreated
 type NoteCreated struct{ Text string }
