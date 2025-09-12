@@ -101,9 +101,16 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		h.Form(h.Action("/notes"), h.Method("post"),
 			h.Input(h.AutoFocus(), h.Name("text")),
 		),
+		h.Div(h.Style("display:flex; gap:1em"),
+			h.A(g.Text("inbox"), h.Href("?category=inbox")),
+			g.Map(categories, func(cat string) g.Node {
+				return h.A(g.Text(cat), h.Href("?category="+cat))
+			}),
+			h.A(g.Text("all"), h.Href("?category")),
+		),
 		h.Table(h.Class("striped"), h.TBody(
 			g.Map(noteList, func(note notes.Note) g.Node {
-				return h.Tr(
+				return h.Tr(h.Class("note"),
 					h.Td(h.A(h.Href("/notes/"+note.ID), g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(linkifyNode(note.Text)),
@@ -113,14 +120,20 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	}).Render(w)
 }
 
+var categories = []string{"task", "reminder", "idea", "reference", "observation"}
+
 func notesButtonsNode(note notes.Note) g.Node {
+	if note.Category != "inbox" {
+		return nil
+	}
 	base := fmt.Sprintf("/notes/%s/set/", note.ID)
 	return h.Div(
-		g.Map([]string{"task", "reminder", "idea", "reference", "observation"},
+		g.Map(categories,
 			func(category string) g.Node {
 				return h.Button(
 					g.Text(category),
 					g.Attr("hx-post", base+category),
+					g.Attr("hx-target", "closest .note"),
 				)
 			}),
 	)
