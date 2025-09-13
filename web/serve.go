@@ -132,19 +132,20 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 					h.Td(h.A(h.Href("/notes/"+note.ID), g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(linkifyNode(note.Text)),
-					h.Td(g.If(category == "inbox",
-						h.Div(h.Style("display:flex; gap:5px"),
-							g.Map(categories,
-								func(category string) g.Node {
-									return h.Button(
-										h.Style("padding:0 .5em"),
-										h.Class("outline"),
-										g.Text(category),
-										g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
-										g.Attr("hx-target", "#note-"+note.ID),
-										g.Attr("hx-swap", "delete swap:1s"),
-									)
-								})))))
+					h.Td(h.Style("padding:0"),
+						g.If(category == "inbox",
+							h.Div(h.Style("display:flex; gap:5px"),
+								g.Map(categories,
+									func(category string) g.Node {
+										return h.Button(
+											h.Style("padding:0 .5em"),
+											h.Class("outline"),
+											g.Text(category),
+											g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
+											g.Attr("hx-target", "#note-"+note.ID),
+											g.Attr("hx-swap", "delete swap:1s"),
+										)
+									})))))
 			}))),
 	)).Render(w)
 }
@@ -206,7 +207,7 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 				func(category string) g.Node {
 					return h.Button(
 						g.If(category != note.Category, h.Class("outline")),
-						h.Style("padding:0 .5em"),
+						h.Style("padding:0 .5em; margin:0"),
 						g.Text(category),
 						g.Attr("hx-post", base+category),
 						g.Attr("hx-target", "#hxnote"),
