@@ -48,6 +48,9 @@ type Params struct {
 	Main g.Node
 }
 
+//go:embed style.css
+var styles string
+
 func page(main g.Node) g.Node {
 	color := "jade"
 	brand := "whatever"
@@ -63,6 +66,8 @@ func page(main g.Node) g.Node {
 			h.Link(h.Rel("stylesheet"), h.Href(fmt.Sprintf("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.%s.min.css", color))),
 			//h.Link(h.Rel("stylesheet"), h.Href("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css")),
 			h.Script(h.Src("https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js")),
+			h.Script(h.Src("https://unpkg.com/htmx-ext-class-tools@2.0.1/class-tools.js")),
+			h.StyleEl(g.Raw(styles)),
 		),
 		h.Body( //g.Attr("data-theme", "dark"),
 			h.Div(h.Class("container"),
@@ -97,47 +102,51 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
-	page(g.Group{
-		h.Form(h.Action("/notes"), h.Method("post"),
-			h.Input(h.AutoFocus(), h.Name("text")),
-		),
+	categoryCounts, err := s.app.Notes.CategoryCounts()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page(h.Div(h.ID("page"),
+		h.Form(h.Input(h.AutoFocus(), h.Name("text")),
+			g.Attr("hx-post", "/notes"),
+			g.Attr("hx-swap", "outerHTML"),
+			g.Attr("hx-target", "#page"),
+			g.Attr("hx-select", "#page")),
 		h.Div(h.Style("display:flex; gap:1em"),
-			h.A(g.Text("inbox"), h.Href("?category=inbox")),
-			g.Map(categories, func(cat string) g.Node {
-				return h.A(g.Text(cat), h.Href("?category="+cat))
+			//h.A(g.Text("inbox"), h.Href("?category=inbox")),
+			g.Map(categoryCounts, func(cc notes.CategoryCount) g.Node {
+				if cc.Count > 0 {
+					return h.A(g.Text(fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)),
+						h.Href("?category="+cc.Category))
+				} else {
+					return g.Text(cc.Category)
+				}
 			}),
-			h.A(g.Text("all"), h.Href("?category")),
+			//h.A(g.Text("all"), h.Href("?category")),
 		),
 		h.Table(h.Class("striped"), h.TBody(
 			g.Map(noteList, func(note notes.Note) g.Node {
-				return h.Tr(h.Class("note"),
+				return h.Tr(h.ID("note-"+note.ID),
 					h.Td(h.A(h.Href("/notes/"+note.ID), g.Text(note.ID[0:7]))),
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(linkifyNode(note.Text)),
-					h.Td(notesButtonsNode(note)),
-				)
+					h.Td(g.If(category == "inbox",
+						g.Map(categories,
+							func(category string) g.Node {
+								return h.Button(
+									g.Text(category),
+									g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
+									g.Attr("hx-target", "#note-"+note.ID),
+									g.Attr("hx-swap", "delete swap:1s"),
+								)
+							}))))
 			}))),
-	}).Render(w)
+	)).Render(w)
 }
 
 var categories = []string{"task", "reminder", "idea", "reference", "observation"}
-
-func notesButtonsNode(note notes.Note) g.Node {
-	if note.Category != "inbox" {
-		return nil
-	}
-	base := fmt.Sprintf("/notes/%s/set/", note.ID)
-	return h.Div(
-		g.Map(categories,
-			func(category string) g.Node {
-				return h.Button(
-					g.Text(category),
-					g.Attr("hx-post", base+category),
-					g.Attr("hx-target", "closest .note"),
-				)
-			}),
-	)
-}
 
 func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -148,6 +157,8 @@ func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	http.Redirect(w, r, r.Header.Get("hx-current-url"), http.StatusSeeOther)
 }
 
 func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request) {
@@ -184,10 +195,23 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	noteNode(note, g.Group{
+	base := fmt.Sprintf("/notes/%s/set/", note.ID)
+	noteNode(note, h.Div(
 		h.P(linkifyNode(note.Text)),
+		h.Div(h.Class("uwu"),
+			g.Map(categories,
+				func(category string) g.Node {
+					return h.Button(
+						g.Text(category),
+						g.Attr("hx-post", base+category),
+						g.Attr("hx-target", "#hxnote"),
+						g.Attr("hx-select", "#hxnote"),
+						g.Attr("hx-swap", "outerHTML"),
+					)
+				}),
+		),
 		h.A(h.Href(note.ID+"/edit"), g.Text("edit")),
-	}).Render(w)
+	)).Render(w)
 }
 
 func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -225,8 +249,9 @@ func (s *webservice) postEditNoteHandler(w http.ResponseWriter, r *http.Request)
 
 func noteNode(note notes.Note, slot g.Node) g.Node {
 	return page(g.Group{
-		h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
+		h.Div(h.ID("hxnote"), h.Style("display:flex; align-items:baseline; justify-content:space-between"),
 			h.H6(g.Text(note.ID[0:7])),
+			h.P(g.Text(note.Category)),
 			h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/delete", note.ID)),
 				h.Button(
 					h.Class("outline secondary"),
@@ -272,7 +297,10 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.Redirect(w, r, "/notes", http.StatusSeeOther)
+
+	url := r.Header.Get("HX-Current-URL")
+	fmt.Println("url", url)
+	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
 func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {

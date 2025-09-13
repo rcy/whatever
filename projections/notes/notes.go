@@ -57,6 +57,20 @@ func (p *Projection) FindAllDeleted() ([]Note, error) {
 	return noteList, nil
 }
 
+type CategoryCount struct {
+	Category string
+	Count    int `db:"count"`
+}
+
+func (p *Projection) CategoryCounts() ([]CategoryCount, error) {
+	var categories []CategoryCount
+	err := p.db.Select(&categories, `select count(*) count, category from notes group by category`)
+	if err != nil {
+		return nil, fmt.Errorf("select categories: %w", err)
+	}
+	return categories, nil
+}
+
 func New(e *evoke.Service) (*Projection, error) {
 	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {

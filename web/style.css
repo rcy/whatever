@@ -1,0 +1,6 @@
+tr.htmx-swapping {
+    opacity: 0;
+    transform: scaleY(0);
+    transform: translateX(100px);
+    transition: opacity 1s, transform 1s;
+}
