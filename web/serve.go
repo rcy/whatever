@@ -199,23 +199,8 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := fmt.Sprintf("/notes/%s/set/", note.ID)
 	noteNode(note, h.Div(
 		h.P(linkifyNode(note.Text)),
-		h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
-			g.Map(categories,
-				func(category string) g.Node {
-					return h.Button(
-						g.If(category != note.Category, h.Class("outline")),
-						h.Style("padding:0 .5em; margin:0"),
-						g.Text(category),
-						g.Attr("hx-post", base+category),
-						g.Attr("hx-target", "#hxnote"),
-						g.Attr("hx-select", "#hxnote"),
-						g.Attr("hx-swap", "outerHTML"),
-					)
-				}),
-		),
 		h.A(h.Href(note.ID+"/edit"), g.Text("edit")),
 	)).Render(w)
 }
@@ -233,7 +218,7 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 		h.Form(h.Method("post"),
 			h.Input(h.Name("text"), h.Value(note.Text)),
 			h.Div(h.Style("display:flex; gap:1em"),
-				h.Button(g.Text("save")),
+				h.Button(h.Style("padding: 0 .5em"), g.Text("save")),
 				h.Div(h.A(g.Text("cancel"), h.Href("/notes/"+note.ID)))),
 		),
 	}).Render(w)
@@ -254,19 +239,35 @@ func (s *webservice) postEditNoteHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func noteNode(note notes.Note, slot g.Node) g.Node {
+	base := fmt.Sprintf("/notes/%s/set/", note.ID)
 	return page(g.Group{
 		h.Div(h.ID("hxnote"),
 			h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
-				h.H6(g.Text(note.ID[0:7])),
-				h.P(g.Text(note.Category)),
+				h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
+					g.Map(categories,
+						func(category string) g.Node {
+							return h.Button(
+								g.If(category != note.Category, h.Class("outline")),
+								h.Style("padding:0 .5em; margin:0"),
+								g.Text(category),
+								g.Attr("hx-post", base+category),
+								g.Attr("hx-target", "#hxnote"),
+								g.Attr("hx-select", "#hxnote"),
+								g.Attr("hx-swap", "outerHTML"),
+							)
+						}),
+				),
+
 				h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/delete", note.ID)),
 					h.Button(
+						h.Style("padding:0 .5em"),
 						h.Class("outline secondary"),
 						g.Text("delete"),
 					),
 				),
 			),
 			h.P(g.Text("Created: "+note.Ts.String())),
+			h.Hr(),
 			slot,
 		)})
 }
