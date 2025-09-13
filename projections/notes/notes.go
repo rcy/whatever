@@ -118,12 +118,14 @@ func (p *Projection) noteCreated(event evoke.Event, _ evoke.Inserter, _ bool) er
 	if err != nil {
 		return err
 	}
-	_, err = p.db.Exec(`insert into notes(id, ts, text, category) values(?,?,?,?)`, event.AggregateID, event.CreatedAt, payload.Text, "inbox")
+	q := `insert into notes(id, ts, text, category) values(?,?,?,?)`
+	_, err = p.db.Exec(q, event.AggregateID, event.CreatedAt, payload.Text, "inbox")
 	return nil
 }
 
 func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
-	_, err := p.db.Exec(`insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`, event.AggregateID)
+	q := `insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`
+	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
 		return err
 	}
@@ -133,7 +135,8 @@ func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) er
 }
 
 func (p *Projection) noteUndeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
-	_, err := p.db.Exec(`insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`, event.AggregateID)
+	q := `insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`
+	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
 		return err
 	}
@@ -148,7 +151,8 @@ func (p *Projection) noteTextUpdated(event evoke.Event, _ evoke.Inserter, _ bool
 		return err
 	}
 
-	_, err = p.db.Exec(`update notes set text = ? where id = ?`, payload.Text, event.AggregateID)
+	q := `update notes set text = ? where id = ?`
+	_, err = p.db.Exec(q, payload.Text, event.AggregateID)
 	return nil
 }
 
@@ -158,6 +162,7 @@ func (p *Projection) noteCategoryChanged(event evoke.Event, _ evoke.Inserter, _ 
 		return err
 	}
 
-	_, err = p.db.Exec(`update notes set category = ? where id = ?`, payload.Category, event.AggregateID)
+	q := `update notes set category = ? where id = ?`
+	_, err = p.db.Exec(q, payload.Category, event.AggregateID)
 	return err
 }
