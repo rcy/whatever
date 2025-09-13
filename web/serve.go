@@ -133,15 +133,18 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(linkifyNode(note.Text)),
 					h.Td(g.If(category == "inbox",
-						g.Map(categories,
-							func(category string) g.Node {
-								return h.Button(
-									g.Text(category),
-									g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
-									g.Attr("hx-target", "#note-"+note.ID),
-									g.Attr("hx-swap", "delete swap:1s"),
-								)
-							}))))
+						h.Div(h.Style("display:flex; gap:5px"),
+							g.Map(categories,
+								func(category string) g.Node {
+									return h.Button(
+										h.Style("padding:0 .5em"),
+										h.Class("outline"),
+										g.Text(category),
+										g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
+										g.Attr("hx-target", "#note-"+note.ID),
+										g.Attr("hx-swap", "delete swap:1s"),
+									)
+								})))))
 			}))),
 	)).Render(w)
 }
@@ -198,10 +201,12 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 	base := fmt.Sprintf("/notes/%s/set/", note.ID)
 	noteNode(note, h.Div(
 		h.P(linkifyNode(note.Text)),
-		h.Div(h.Class("uwu"),
+		h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
 			g.Map(categories,
 				func(category string) g.Node {
 					return h.Button(
+						g.If(category != note.Category, h.Class("outline")),
+						h.Style("padding:0 .5em"),
 						g.Text(category),
 						g.Attr("hx-post", base+category),
 						g.Attr("hx-target", "#hxnote"),
@@ -249,19 +254,20 @@ func (s *webservice) postEditNoteHandler(w http.ResponseWriter, r *http.Request)
 
 func noteNode(note notes.Note, slot g.Node) g.Node {
 	return page(g.Group{
-		h.Div(h.ID("hxnote"), h.Style("display:flex; align-items:baseline; justify-content:space-between"),
-			h.H6(g.Text(note.ID[0:7])),
-			h.P(g.Text(note.Category)),
-			h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/delete", note.ID)),
-				h.Button(
-					h.Class("outline secondary"),
-					g.Text("delete"),
+		h.Div(h.ID("hxnote"),
+			h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
+				h.H6(g.Text(note.ID[0:7])),
+				h.P(g.Text(note.Category)),
+				h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/delete", note.ID)),
+					h.Button(
+						h.Class("outline secondary"),
+						g.Text("delete"),
+					),
 				),
 			),
-		),
-		h.P(g.Text("Created: " + note.Ts.String())),
-		slot,
-	})
+			h.P(g.Text("Created: "+note.Ts.String())),
+			slot,
+		)})
 }
 
 func (s *webservice) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
