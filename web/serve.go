@@ -46,8 +46,7 @@ func Server(app *app.App) *chi.Mux {
 			r.Get("/", svc.notesHandler)
 			r.Get("/{id}", svc.showNoteHandler)
 
-			r.Get("/{id}/edit", svc.showEditNoteHandler)
-			r.Post("/{id}/edit", svc.postEditNoteHandler)
+			r.HandleFunc("/{id}/edit", svc.showEditNoteHandler)
 
 			r.Post("/{id}/delete", svc.deleteNoteHandler)
 			r.Post("/{id}/undelete", svc.undeleteNoteHandler)
@@ -221,29 +220,28 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	noteNode(note, g.Group{
-		h.Form(h.Method("post"),
-			h.Input(h.Name("text"), h.Value(note.Text)),
-			h.Div(h.Style("display:flex; gap:1em"),
-				h.Button(h.Style("padding: 0 .5em"), g.Text("save")),
-				h.Div(h.A(g.Text("cancel"), h.Href("/notes/"+note.Category+"/"+note.ID)))),
-		),
-	}).Render(w)
-}
-
-func (s *webservice) postEditNoteHandler(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	category := chi.URLParam(r, "category")
-
-	text := strings.TrimSpace(r.FormValue("text"))
-	if text != "" {
+	switch r.Method {
+	case "GET":
+		noteNode(note, g.Group{
+			h.Form(h.Method("post"),
+				h.Input(h.Name("text"), h.Value(note.Text)),
+				h.Div(h.Style("display:flex; gap:1em"),
+					h.Button(h.Style("padding: 0 .5em"), g.Text("save")),
+					h.Div(h.A(g.Text("cancel"), h.Href("/notes/"+note.Category+"/"+note.ID)))),
+			),
+		}).Render(w)
+	case "POST":
+		text := strings.TrimSpace(r.FormValue("text"))
 		err := s.app.Commands.UpdateNoteText(id, text)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		http.Redirect(w, r, fmt.Sprintf("/notes/%s/%s", note.Category, id), http.StatusSeeOther)
+	default:
+		http.Error(w, "", http.StatusMethodNotAllowed)
 	}
-	http.Redirect(w, r, fmt.Sprintf("/notes/%s/%s", category, id), http.StatusSeeOther)
 }
 
 func noteNode(note notes.Note, slot g.Node) g.Node {
