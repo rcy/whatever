@@ -1,4 +1,4 @@
-package cli
+package events
 
 import (
 	"fmt"
@@ -8,11 +8,15 @@ import (
 	"github.com/rcy/whatever/app"
 )
 
-type EventsCmd struct {
+type Cmd struct {
+	List ListCmd `cmd:""`
+}
+
+type ListCmd struct {
 	ID string
 }
 
-func (c *EventsCmd) Run(app *app.App) error {
+func (c *ListCmd) Run(app *app.App) error {
 	var events []evoke.Event
 	if c.ID != "" {
 		aggID, err := app.Events.GetAggregateID(c.ID)
