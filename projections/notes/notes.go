@@ -114,10 +114,6 @@ func (p *Projection) Subscribe(e *evoke.Service) error {
 	if err != nil {
 		return err
 	}
-	err = e.Subscribe(events.NotesRealmAssigned{}, p.notesRealmAssigned)
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -189,17 +185,5 @@ func (p *Projection) noteRealmChanged(event evoke.Event, _ evoke.Inserter, _ boo
 
 	q := `update notes set realm_id = ? where id = ?`
 	_, err = p.db.Exec(q, payload.RealmID, event.AggregateID)
-	return err
-}
-
-// Assign all notes at this point to realm
-func (p *Projection) notesRealmAssigned(event evoke.Event, _ evoke.Inserter, _ bool) error {
-	payload, err := evoke.UnmarshalPayload[events.NotesRealmAssigned](event)
-	if err != nil {
-		return err
-	}
-
-	q := `update notes set realm_id = ?`
-	_, err = p.db.Exec(q, payload.RealmID)
 	return err
 }

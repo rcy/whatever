@@ -50,9 +50,3 @@ type NoteRealmChanged struct{ RealmID string }
 
 func (NoteRealmChanged) EventType() string { return "NoteRealmChanged" }
 func (NoteRealmChanged) Aggregate() string { return NoteAggregate }
-
-// NotesRealmAssigned
-type NotesRealmAssigned struct{ RealmID string }
-
-func (NotesRealmAssigned) EventType() string { return "NotesRealmAssigned" }
-func (NotesRealmAssigned) Aggregate() string { return NoteAggregate }
