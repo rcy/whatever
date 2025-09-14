@@ -15,6 +15,7 @@ type Note struct {
 	Ts       time.Time `db:"ts"`
 	Text     string    `db:"text"`
 	Category string    `db:"category"`
+	RealmID  string    `db:"realm_id"`
 }
 
 type Projection struct {
@@ -39,9 +40,9 @@ func (p *Projection) FindAll() ([]Note, error) {
 	return noteList, nil
 }
 
-func (p *Projection) FindAllByCategory(category string) ([]Note, error) {
+func (p *Projection) FindAllInRealmByCategory(realm string, category string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where category = ? order by ts asc`, category)
+	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and category = ? order by ts asc`, realm, category)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}
@@ -76,11 +77,11 @@ func New(e *evoke.Service) (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null, ts timestamp not null, text not null, category not null)`)
+	_, err = db.Exec(`create table notes(id not null, ts timestamp not null, text not null, category not null, realm_id not null)`)
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null, ts timestamp not null, text not null, category not null)`)
+	_, err = db.Exec(`create table deleted_notes(id not null, ts timestamp not null, text not null, category not null, realm_id not null)`)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +110,14 @@ func (p *Projection) Subscribe(e *evoke.Service) error {
 	if err != nil {
 		return err
 	}
+	err = e.Subscribe(events.NoteRealmChanged{}, p.noteRealmChanged)
+	if err != nil {
+		return err
+	}
+	err = e.Subscribe(events.NotesRealmAssigned{}, p.notesRealmAssigned)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -118,13 +127,18 @@ func (p *Projection) noteCreated(event evoke.Event, _ evoke.Inserter, _ bool) er
 	if err != nil {
 		return err
 	}
-	q := `insert into notes(id, ts, text, category) values(?,?,?,?)`
-	_, err = p.db.Exec(q, event.AggregateID, event.CreatedAt, payload.Text, "inbox")
+
+	q := `insert into notes(id, ts, text, realm_id, category) values(?,?,?,?,?)`
+	_, err = p.db.Exec(q, event.AggregateID, event.CreatedAt, payload.Text, payload.RealmID, "inbox")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
-	q := `insert into deleted_notes(id, ts, text, category) select id, ts, text, category from notes where id = ?`
+	q := `insert into deleted_notes(id, ts, text, realm_id, category) select id, ts, text, realm_id, category from notes where id = ?`
 	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
 		return err
@@ -135,7 +149,7 @@ func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) er
 }
 
 func (p *Projection) noteUndeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
-	q := `insert into notes(id, ts, text, category) select id, ts, text, category from deleted_notes where id = ?`
+	q := `insert into notes(id, ts, text, realm_id, category) select id, ts, text, realm_id, category from deleted_notes where id = ?`
 	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
 		return err
@@ -164,5 +178,28 @@ func (p *Projection) noteCategoryChanged(event evoke.Event, _ evoke.Inserter, _ 
 
 	q := `update notes set category = ? where id = ?`
 	_, err = p.db.Exec(q, payload.Category, event.AggregateID)
+	return err
+}
+
+func (p *Projection) noteRealmChanged(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	payload, err := evoke.UnmarshalPayload[events.NoteRealmChanged](event)
+	if err != nil {
+		return err
+	}
+
+	q := `update notes set realm_id = ? where id = ?`
+	_, err = p.db.Exec(q, payload.RealmID, event.AggregateID)
+	return err
+}
+
+// Assign all notes at this point to realm
+func (p *Projection) notesRealmAssigned(event evoke.Event, _ evoke.Inserter, _ bool) error {
+	payload, err := evoke.UnmarshalPayload[events.NotesRealmAssigned](event)
+	if err != nil {
+		return err
+	}
+
+	q := `update notes set realm_id = ?`
+	_, err = p.db.Exec(q, payload.RealmID)
 	return err
 }

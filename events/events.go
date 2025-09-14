@@ -1,9 +1,22 @@
 package events
 
+const RealmAggregate = "realm"
+
+// RealmCreated
+type RealmCreated struct {
+	Name string
+}
+
+func (RealmCreated) EventType() string { return "RealmCreated" }
+func (RealmCreated) Aggregate() string { return RealmAggregate }
+
 const NoteAggregate = "note"
 
 // NoteCreated
-type NoteCreated struct{ Text string }
+type NoteCreated struct {
+	RealmID string
+	Text    string
+}
 
 func (NoteCreated) EventType() string { return "NoteCreated" }
 func (NoteCreated) Aggregate() string { return NoteAggregate }
@@ -31,3 +44,15 @@ type NoteCategoryChanged struct{ Category string }
 
 func (NoteCategoryChanged) EventType() string { return "NoteCategoryChanged" }
 func (NoteCategoryChanged) Aggregate() string { return NoteAggregate }
+
+// NoteRealmChanged
+type NoteRealmChanged struct{ RealmID string }
+
+func (NoteRealmChanged) EventType() string { return "NoteRealmChanged" }
+func (NoteRealmChanged) Aggregate() string { return NoteAggregate }
+
+// NotesRealmAssigned
+type NotesRealmAssigned struct{ RealmID string }
+
+func (NotesRealmAssigned) EventType() string { return "NotesRealmAssigned" }
+func (NotesRealmAssigned) Aggregate() string { return NoteAggregate }

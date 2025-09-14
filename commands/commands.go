@@ -16,13 +16,30 @@ func New(events evoke.Inserter) *Service {
 	return &Service{Events: events}
 }
 
-func (s *Service) CreateNote(text string) (string, error) {
+func (s *Service) CreateRealm(name string) (string, error) {
+	aggID := evoke.ID()
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("name cannot be empty")
+	}
+	err := s.Events.Insert(aggID, events.RealmCreated{Name: name})
+	if err != nil {
+		return "", err
+	}
+	return aggID, nil
+}
+
+func (s *Service) CreateNote(realmID string, text string) (string, error) {
+	if realmID == "" {
+		return "", fmt.Errorf("realm cannot be empty")
+	}
+
 	aggID := evoke.ID()
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return "", fmt.Errorf("text cannot be empty")
 	}
-	err := s.Events.Insert(aggID, events.NoteCreated{Text: text})
+	err := s.Events.Insert(aggID, events.NoteCreated{RealmID: realmID, Text: text})
 	if err != nil {
 		return "", err
 	}
@@ -54,6 +71,19 @@ func (s *Service) UpdateNoteText(id string, text string) error {
 	}
 
 	err = s.Events.Insert(aggID, events.NoteTextUpdated{Text: text})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) SetNoteRealm(id string, realmID string) error {
+	aggID, err := s.Events.GetAggregateID(id)
+	if err != nil {
+		return err
+	}
+
+	err = s.Events.Insert(aggID, events.NoteRealmChanged{RealmID: realmID})
 	if err != nil {
 		return err
 	}

@@ -34,7 +34,7 @@ func (c *ListCmd) Run(app *app.App) error {
 		return err
 	}
 	for _, note := range noteList {
-		fmt.Printf("%s %s %s\n", note.ID[0:7], note.Category, note.Text)
+		fmt.Printf("%s %s %s %s\n", note.RealmID, note.ID[0:7], note.Category, note.Text)
 	}
 
 	return nil
@@ -60,11 +60,12 @@ func (c *ShowCmd) Run(app *app.App) error {
 }
 
 type AddCmd struct {
-	Text []string `arg:""`
+	Text  []string `arg:""`
+	Realm string
 }
 
 func (c *AddCmd) Run(app *app.App) error {
-	aggID, err := app.Commands.CreateNote(strings.Join(c.Text, " "))
+	aggID, err := app.Commands.CreateNote(c.Realm, strings.Join(c.Text, " "))
 	fmt.Println(aggID)
 	return err
 }

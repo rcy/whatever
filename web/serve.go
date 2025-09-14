@@ -14,6 +14,7 @@ import (
 	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/projections/notes"
+	"github.com/rcy/whatever/projections/realms"
 	"github.com/rcy/whatever/version"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -26,8 +27,9 @@ type webservice struct {
 
 func Server(app *app.App) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
 	svc := webservice{app: app}
+	r.Use(middleware.Logger)
+	r.Use(svc.realmMiddleware)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/notes", http.StatusSeeOther)
@@ -35,6 +37,11 @@ func Server(app *app.App) *chi.Mux {
 
 	r.Get("/deleted_notes", svc.deletedNotesHandler)
 	r.Get("/events", svc.eventsHandler)
+
+	r.Post("/realm", func(w http.ResponseWriter, r *http.Request) {
+		svc.setRealmCookie(w, r, r.FormValue("realm"))
+		w.Header().Set("HX-Redirect", "")
+	})
 
 	r.Route("/notes", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +70,7 @@ type Params struct {
 //go:embed style.css
 var styles string
 
-func page(main g.Node) g.Node {
+func page(currentRealmID string, realmList []realms.Realm, main g.Node) g.Node {
 	color := "jade"
 	brand := "whatever"
 	if !version.IsRelease() {
@@ -89,23 +96,30 @@ func page(main g.Node) g.Node {
 					h.H2(h.A(h.Href("/events"), g.Text("events"))),
 					h.H2(h.A(h.Href("/deleted_notes"), g.Text("deleted"))),
 				),
+				h.Div(
+					h.Select(g.Attr("hx-post", "/realm"), h.Name("realm"),
+						g.Map(realmList, func(realm realms.Realm) g.Node {
+							return h.Option(
+								h.Value(realm.ID),
+								g.Text(realm.Name),
+								g.If(currentRealmID == realm.ID, h.Selected()),
+							)
+						})),
+				),
 				h.Main(main),
-			)),
-	)
+			),
+		))
 }
 
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
 
-	var noteList []notes.Note
-	var err error
-
-	noteList, err = s.app.Notes.FindAllByCategory(category)
+	noteList, err := s.app.Notes.FindAllInRealmByCategory(realm, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	slices.Reverse(noteList)
 
 	categoryCounts, err := s.app.Notes.CategoryCounts()
@@ -114,8 +128,14 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page(h.Div(h.ID("page"),
-		h.Form(h.Input(h.AutoFocus(), h.Name("text")),
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page(realm, realmList, h.Div(h.ID("page"),
+		h.Form(h.Input(h.Name("text"), h.Placeholder("add note...")),
 			g.Attr("hx-post", "/notes"),
 			g.Attr("hx-swap", "outerHTML"),
 			g.Attr("hx-target", "#page"),
@@ -136,8 +156,8 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 			g.Map(noteList, func(note notes.Note) g.Node {
 				return h.Tr(h.ID("note-"+note.ID),
 					h.Td(h.A(h.Href("/notes/"+category+"/"+note.ID), g.Text(note.ID[0:7]))),
-					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(linkifyNode(note.Text)),
+					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
 					h.Td(h.Style("padding:0"),
 						g.If(category == "inbox",
 							h.Div(h.Style("display:flex; gap:5px"),
@@ -172,6 +192,8 @@ func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.
 }
 
 func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromRequest(r)
+
 	noteList, err := s.app.Notes.FindAllDeleted()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -179,7 +201,13 @@ func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request)
 	}
 	slices.Reverse(noteList)
 
-	page(g.Group{
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page(realm, realmList, g.Group{
 		h.Table(h.Class("striped"), h.TBody(
 			g.Map(noteList, func(note notes.Note) g.Node {
 				return h.Tr(
@@ -197,6 +225,8 @@ func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromRequest(r)
+
 	id := chi.URLParam(r, "id")
 
 	note, err := s.app.Notes.FindOne(id)
@@ -205,16 +235,30 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	noteNode(note, h.Div(
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	noteNode(realm, realmList, note, h.Div(
 		h.P(linkifyNode(note.Text)),
 		h.A(h.Href(note.ID+"/edit"), g.Text("edit")),
 	)).Render(w)
 }
 
 func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromRequest(r)
+
 	id := chi.URLParam(r, "id")
 
 	note, err := s.app.Notes.FindOne(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	realmList, err := s.app.Realms.FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -222,7 +266,7 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 
 	switch r.Method {
 	case "GET":
-		noteNode(note, g.Group{
+		noteNode(realm, realmList, note, g.Group{
 			h.Form(h.Method("post"),
 				h.Input(h.Name("text"), h.Value(note.Text)),
 				h.Div(h.Style("display:flex; gap:1em"),
@@ -244,9 +288,9 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func noteNode(note notes.Note, slot g.Node) g.Node {
+func noteNode(realm string, realmList []realms.Realm, note notes.Note, slot g.Node) g.Node {
 	base := fmt.Sprintf("/notes/%s/set/", note.ID)
-	return page(g.Group{
+	return page(realm, realmList, g.Group{
 		h.Div(h.ID("hxnote"),
 			h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
 				h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
@@ -303,9 +347,10 @@ func (s *webservice) undeleteNoteHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
+	realmID := realmFromRequest(r)
 	text := strings.TrimSpace(r.FormValue("text"))
 	if text != "" {
-		_, err := s.app.Commands.CreateNote(text)
+		_, err := s.app.Commands.CreateNote(realmID, text)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -318,13 +363,21 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
+	realm := realmFromRequest(r)
+
 	events, err := s.app.Events.LoadAllEvents(true)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	page(g.Group{
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page(realm, realmList, g.Group{
 		h.Table(
 			h.Body(
 				g.Map(events, func(event evoke.Event) g.Node {
