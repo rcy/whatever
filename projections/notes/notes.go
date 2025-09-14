@@ -40,6 +40,15 @@ func (p *Projection) FindAll() ([]Note, error) {
 	return noteList, nil
 }
 
+func (p *Projection) FindAllInRealm(realmID string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList, `select * from notes where realm_id = ? order by ts asc`, realmID)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes in realm: %w", err)
+	}
+	return noteList, nil
+}
+
 func (p *Projection) FindAllInRealmByCategory(realm string, category string) ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and category = ? order by ts asc`, realm, category)
