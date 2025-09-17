@@ -72,9 +72,9 @@ type CategoryCount struct {
 	Count    int `db:"count"`
 }
 
-func (p *Projection) CategoryCounts() ([]CategoryCount, error) {
+func (p *Projection) CategoryCounts(realmID string) ([]CategoryCount, error) {
 	var categories []CategoryCount
-	err := p.db.Select(&categories, `select count(*) count, category from notes group by category`)
+	err := p.db.Select(&categories, `select count(*) count, category from notes where realm_id = ? group by category`, realmID)
 	if err != nil {
 		return nil, fmt.Errorf("select categories: %w", err)
 	}

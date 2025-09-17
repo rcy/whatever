@@ -112,17 +112,17 @@ func page(currentRealmID string, realmList []realms.Realm, main g.Node) g.Node {
 }
 
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
-	realm := realmFromRequest(r)
+	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
 
-	noteList, err := s.app.Notes().FindAllInRealmByCategory(realm, category)
+	noteList, err := s.app.Notes().FindAllInRealmByCategory(realmID, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	slices.Reverse(noteList)
 
-	categoryCounts, err := s.app.Notes().CategoryCounts()
+	categoryCounts, err := s.app.Notes().CategoryCounts(realmID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -134,7 +134,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page(realm, realmList, h.Div(h.ID("page"),
+	page(realmID, realmList, h.Div(h.ID("page"),
 		h.Form(h.Input(h.Name("text"), h.Placeholder("add note...")),
 			g.Attr("hx-post", "/notes"),
 			g.Attr("hx-swap", "outerHTML"),
