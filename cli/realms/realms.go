@@ -9,8 +9,9 @@ import (
 )
 
 type Cmd struct {
-	List listCmd `cmd:"" default:"withargs" aliases:"ls"`
-	Add  addCmd  `cmd:""`
+	List   listCmd   `cmd:"" default:"withargs" aliases:"ls"`
+	Add    addCmd    `cmd:""`
+	Delete deleteCmd `cmd:""`
 }
 
 type listCmd struct {
@@ -20,7 +21,7 @@ type listCmd struct {
 func (c *listCmd) Run(app *app.App) error {
 	var realmList []realms.Realm
 	var err error
-	realmList, err = app.Realms.FindAll()
+	realmList, err = app.Realms().FindAll()
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,15 @@ type addCmd struct {
 }
 
 func (c *addCmd) Run(app *app.App) error {
-	aggID, err := app.Commands.CreateRealm(strings.Join(c.Text, " "))
+	aggID, err := app.Commands().CreateRealm(strings.Join(c.Text, " "))
 	fmt.Println(aggID)
 	return err
+}
+
+type deleteCmd struct {
+	ID string `arg:""`
+}
+
+func (c *deleteCmd) Run(app *app.App) error {
+	return app.Commands().DeleteRealm(c.ID)
 }

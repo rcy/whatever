@@ -29,6 +29,19 @@ func (s *Service) CreateRealm(name string) (string, error) {
 	return aggID, nil
 }
 
+func (s *Service) DeleteRealm(realmID string) error {
+	aggID, err := s.Events.GetAggregateID(realmID)
+	if err != nil {
+		return err
+	}
+
+	err = s.Events.Insert(aggID, events.RealmDeleted{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) CreateNote(realmID string, text string) (string, error) {
 	if realmID == "" {
 		return "", fmt.Errorf("realm cannot be empty")

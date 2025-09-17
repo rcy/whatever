@@ -19,17 +19,17 @@ type ListCmd struct {
 func (c *ListCmd) Run(app *app.App) error {
 	var events []evoke.Event
 	if c.ID != "" {
-		aggID, err := app.Events.GetAggregateID(c.ID)
+		aggID, err := app.Events().GetAggregateID(c.ID)
 		if err != nil {
 			return err
 		}
-		events, err = app.Events.LoadAggregateEvents(aggID)
+		events, err = app.Events().LoadAggregateEvents(aggID)
 		if err != nil {
 			return err
 		}
 	} else {
 		var err error
-		events, err = app.Events.LoadAllEvents(true)
+		events, err = app.Events().LoadAllEvents(false)
 		if err != nil {
 			return err
 		}

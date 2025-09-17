@@ -10,6 +10,11 @@ type RealmCreated struct {
 func (RealmCreated) EventType() string { return "RealmCreated" }
 func (RealmCreated) Aggregate() string { return RealmAggregate }
 
+type RealmDeleted struct{}
+
+func (RealmDeleted) EventType() string { return "RealmDeleted" }
+func (RealmDeleted) Aggregate() string { return RealmAggregate }
+
 const NoteAggregate = "note"
 
 // NoteCreated

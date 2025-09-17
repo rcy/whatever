@@ -22,7 +22,7 @@ func (s *webservice) realmMiddleware(next http.Handler) http.Handler {
 		var realmID string
 		cookie, err := r.Cookie(realmCookieName)
 		if err == nil { // no error
-			realm, err := s.app.Realms.FindByID(cookie.Value)
+			realm, err := s.app.Realms().FindByID(cookie.Value)
 			if err != nil {
 				realmID = ""
 			} else {
@@ -32,7 +32,7 @@ func (s *webservice) realmMiddleware(next http.Handler) http.Handler {
 
 		// no realm from cookie, see if any realm at all exists and try to use that
 		if realmID == "" {
-			realm, err := s.app.Realms.FindOldest()
+			realm, err := s.app.Realms().FindOldest()
 			if err != nil {
 				realmID = ""
 			} else {
@@ -42,7 +42,7 @@ func (s *webservice) realmMiddleware(next http.Handler) http.Handler {
 
 		// still no realm, create a new one
 		if realmID == "" {
-			aggID, err := s.app.Commands.CreateRealm("personal")
+			aggID, err := s.app.Commands().CreateRealm("personal")
 			if err != nil {
 				http.Error(w, fmt.Sprintf("CreateRealm: %s", err), http.StatusInternalServerError)
 				return

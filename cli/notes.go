@@ -26,9 +26,9 @@ func (c *ListCmd) Run(app *app.App) error {
 	var noteList []notes.Note
 	var err error
 	if c.Deleted {
-		noteList, err = app.Notes.FindAllDeleted()
+		noteList, err = app.Notes().FindAllDeleted()
 	} else {
-		noteList, err = app.Notes.FindAll()
+		noteList, err = app.Notes().FindAll()
 	}
 	if err != nil {
 		return err
@@ -45,9 +45,9 @@ type ShowCmd struct {
 }
 
 func (c *ShowCmd) Run(app *app.App) error {
-	id, _ := app.Events.GetAggregateID(c.ID)
-	note, err := app.Notes.FindOne(id)
-	eventList, err := app.Events.LoadAggregateEvents(id)
+	id, _ := app.Events().GetAggregateID(c.ID)
+	note, err := app.Notes().FindOne(id)
+	eventList, err := app.Events().LoadAggregateEvents(id)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ type AddCmd struct {
 }
 
 func (c *AddCmd) Run(app *app.App) error {
-	aggID, err := app.Commands.CreateNote(c.Realm, strings.Join(c.Text, " "))
+	aggID, err := app.Commands().CreateNote(c.Realm, strings.Join(c.Text, " "))
 	fmt.Println(aggID)
 	return err
 }
@@ -76,7 +76,7 @@ type EditCmd struct {
 }
 
 func (c *EditCmd) Run(app *app.App) error {
-	err := app.Commands.UpdateNoteText(c.ID, strings.Join(c.Text, " "))
+	err := app.Commands().UpdateNoteText(c.ID, strings.Join(c.Text, " "))
 	return err
 }
 
@@ -85,7 +85,7 @@ type DeleteCmd struct {
 }
 
 func (c *DeleteCmd) Run(app *app.App) error {
-	return app.Commands.DeleteNote(c.ID)
+	return app.Commands().DeleteNote(c.ID)
 }
 
 type UndeleteCmd struct {
@@ -93,5 +93,5 @@ type UndeleteCmd struct {
 }
 
 func (c *UndeleteCmd) Run(app *app.App) error {
-	return app.Commands.UndeleteNote(c.ID)
+	return app.Commands().UndeleteNote(c.ID)
 }

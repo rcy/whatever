@@ -61,15 +61,12 @@ func (p *Projection) FindByID(realmID string) (*Realm, error) {
 	return &realm, nil
 }
 
-func (p *Projection) Subscribe(e *evoke.Service) error {
-	err := e.Subscribe(events.RealmCreated{}, p.realmCreated)
-	if err != nil {
-		return err
-	}
-	return nil
+func (p *Projection) Subscribe(e *evoke.Service) {
+	e.SubscribeSync(events.RealmCreated{}, p.realmCreated)
+	e.SubscribeSync(events.RealmDeleted{}, p.realmDeleted)
 }
 
-func (p *Projection) realmCreated(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) realmCreated(event evoke.Event, _ bool) error {
 	payload, err := evoke.UnmarshalPayload[events.RealmCreated](event)
 	if err != nil {
 		return err
@@ -77,6 +74,16 @@ func (p *Projection) realmCreated(event evoke.Event, _ evoke.Inserter, _ bool) e
 
 	q := `insert into realms(id, ts, name) values(?,?,?)`
 	_, err = p.db.Exec(q, event.AggregateID, event.CreatedAt, payload.Name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Projection) realmDeleted(event evoke.Event, _ bool) error {
+	q := `delete from realms where id = ?`
+	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
 		return err
 	}

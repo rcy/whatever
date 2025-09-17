@@ -98,36 +98,16 @@ func New(e *evoke.Service) (*Projection, error) {
 	return &Projection{db: db}, nil
 }
 
-func (p *Projection) Subscribe(e *evoke.Service) error {
-	err := e.Subscribe(events.NoteCreated{}, p.noteCreated)
-	if err != nil {
-		return err
-	}
-	err = e.Subscribe(events.NoteDeleted{}, p.noteDeleted)
-	if err != nil {
-		return err
-	}
-	err = e.Subscribe(events.NoteUndeleted{}, p.noteUndeleted)
-	if err != nil {
-		return err
-	}
-	err = e.Subscribe(events.NoteTextUpdated{}, p.noteTextUpdated)
-	if err != nil {
-		return err
-	}
-	err = e.Subscribe(events.NoteCategoryChanged{}, p.noteCategoryChanged)
-	if err != nil {
-		return err
-	}
-	err = e.Subscribe(events.NoteRealmChanged{}, p.noteRealmChanged)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (p *Projection) Subscribe(e *evoke.Service) {
+	e.SubscribeSync(events.NoteCreated{}, p.noteCreated)
+	e.SubscribeSync(events.NoteDeleted{}, p.noteDeleted)
+	e.SubscribeSync(events.NoteUndeleted{}, p.noteUndeleted)
+	e.SubscribeSync(events.NoteTextUpdated{}, p.noteTextUpdated)
+	e.SubscribeSync(events.NoteCategoryChanged{}, p.noteCategoryChanged)
+	e.SubscribeSync(events.NoteRealmChanged{}, p.noteRealmChanged)
 }
 
-func (p *Projection) noteCreated(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) noteCreated(event evoke.Event, _ bool) error {
 	payload, err := evoke.UnmarshalPayload[events.NoteCreated](event)
 	if err != nil {
 		return err
@@ -142,7 +122,7 @@ func (p *Projection) noteCreated(event evoke.Event, _ evoke.Inserter, _ bool) er
 	return nil
 }
 
-func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) noteDeleted(event evoke.Event, _ bool) error {
 	q := `insert into deleted_notes(id, ts, text, realm_id, category) select id, ts, text, realm_id, category from notes where id = ?`
 	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
@@ -153,7 +133,7 @@ func (p *Projection) noteDeleted(event evoke.Event, _ evoke.Inserter, _ bool) er
 	return err
 }
 
-func (p *Projection) noteUndeleted(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) noteUndeleted(event evoke.Event, _ bool) error {
 	q := `insert into notes(id, ts, text, realm_id, category) select id, ts, text, realm_id, category from deleted_notes where id = ?`
 	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
@@ -164,7 +144,7 @@ func (p *Projection) noteUndeleted(event evoke.Event, _ evoke.Inserter, _ bool) 
 	return err
 }
 
-func (p *Projection) noteTextUpdated(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) noteTextUpdated(event evoke.Event, _ bool) error {
 	payload, err := evoke.UnmarshalPayload[events.NoteTextUpdated](event)
 	if err != nil {
 		return err
@@ -175,7 +155,7 @@ func (p *Projection) noteTextUpdated(event evoke.Event, _ evoke.Inserter, _ bool
 	return nil
 }
 
-func (p *Projection) noteCategoryChanged(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) noteCategoryChanged(event evoke.Event, _ bool) error {
 	payload, err := evoke.UnmarshalPayload[events.NoteCategoryChanged](event)
 	if err != nil {
 		return err
@@ -186,7 +166,7 @@ func (p *Projection) noteCategoryChanged(event evoke.Event, _ evoke.Inserter, _ 
 	return err
 }
 
-func (p *Projection) noteRealmChanged(event evoke.Event, _ evoke.Inserter, _ bool) error {
+func (p *Projection) noteRealmChanged(event evoke.Event, _ bool) error {
 	payload, err := evoke.UnmarshalPayload[events.NoteRealmChanged](event)
 	if err != nil {
 		return err

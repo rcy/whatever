@@ -115,20 +115,20 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
 
-	noteList, err := s.app.Notes.FindAllInRealmByCategory(realm, category)
+	noteList, err := s.app.Notes().FindAllInRealmByCategory(realm, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	slices.Reverse(noteList)
 
-	categoryCounts, err := s.app.Notes.CategoryCounts()
+	categoryCounts, err := s.app.Notes().CategoryCounts()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	realmList, err := s.app.Realms.FindAll()
+	realmList, err := s.app.Realms().FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -182,7 +182,7 @@ func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.
 	id := chi.URLParam(r, "id")
 	category := chi.URLParam(r, "category")
 
-	err := s.app.Commands.SetNoteCategory(id, category)
+	err := s.app.Commands().SetNoteCategory(id, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -194,14 +194,14 @@ func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.
 func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromRequest(r)
 
-	noteList, err := s.app.Notes.FindAllDeleted()
+	noteList, err := s.app.Notes().FindAllDeleted()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	slices.Reverse(noteList)
 
-	realmList, err := s.app.Realms.FindAll()
+	realmList, err := s.app.Realms().FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -229,13 +229,13 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
-	note, err := s.app.Notes.FindOne(id)
+	note, err := s.app.Notes().FindOne(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	realmList, err := s.app.Realms.FindAll()
+	realmList, err := s.app.Realms().FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -252,13 +252,13 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 
 	id := chi.URLParam(r, "id")
 
-	note, err := s.app.Notes.FindOne(id)
+	note, err := s.app.Notes().FindOne(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	realmList, err := s.app.Realms.FindAll()
+	realmList, err := s.app.Realms().FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -276,7 +276,7 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 		}).Render(w)
 	case "POST":
 		text := strings.TrimSpace(r.FormValue("text"))
-		err := s.app.Commands.UpdateNoteText(id, text)
+		err := s.app.Commands().UpdateNoteText(id, text)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -325,7 +325,7 @@ func noteNode(realm string, realmList []realms.Realm, note notes.Note, slot g.No
 func (s *webservice) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	err := s.app.Commands.DeleteNote(id)
+	err := s.app.Commands().DeleteNote(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -337,7 +337,7 @@ func (s *webservice) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
 func (s *webservice) undeleteNoteHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	err := s.app.Commands.UndeleteNote(id)
+	err := s.app.Commands().UndeleteNote(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -350,7 +350,7 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	text := strings.TrimSpace(r.FormValue("text"))
 	if text != "" {
-		_, err := s.app.Commands.CreateNote(realmID, text)
+		_, err := s.app.Commands().CreateNote(realmID, text)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -365,13 +365,13 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 func (s *webservice) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromRequest(r)
 
-	events, err := s.app.Events.LoadAllEvents(true)
+	events, err := s.app.Events().LoadAllEvents(true)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	realmList, err := s.app.Realms.FindAll()
+	realmList, err := s.app.Realms().FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
