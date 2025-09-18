@@ -140,40 +140,44 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 			g.Attr("hx-swap", "outerHTML"),
 			g.Attr("hx-target", "#page"),
 			g.Attr("hx-select", "#page")),
-		h.Div(h.Style("display:flex; gap:1em"),
-			//h.A(g.Text("inbox"), h.Href("?category=inbox")),
-			g.Map(categoryCounts, func(cc notes.CategoryCount) g.Node {
-				text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
-				if cc.Category == category {
-					return g.Text(text)
-				} else {
-					return h.A(g.Text(text), h.Href(cc.Category))
-				}
-			}),
-			//h.A(g.Text("all"), h.Href("?category")),
-		),
-		h.Table(h.Class("striped"), h.TBody(
-			g.Map(noteList, func(note notes.Note) g.Node {
-				return h.Tr(h.ID("note-"+note.ID),
-					h.Td(h.A(h.Href("/notes/"+category+"/"+note.ID), g.Text(note.ID[0:7]))),
-					h.Td(linkifyNode(note.Text)),
-					h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
-					h.Td(h.Style("padding:0"),
-						g.If(category == "inbox",
-							h.Div(h.Style("display:flex; gap:5px"),
-								g.Map(categories,
-									func(category string) g.Node {
-										return h.Button(
-											h.Style("padding:0 .5em"),
-											h.Class("outline"),
-											g.Text(category),
-											g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
-											g.Attr("hx-target", "#note-"+note.ID),
-											g.Attr("hx-swap", "delete swap:1s"),
-										)
-									})))))
-			}))),
-	)).Render(w)
+		h.Div(h.Style("display:flex; gap: 2em"),
+			h.Div(h.Style("display:flex;flex-direction:column; margin-top: 2em; white-space: nowrap"),
+				g.Map(categoryCounts, func(cc notes.CategoryCount) g.Node {
+					text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
+					if cc.Category == category {
+						return h.Div(h.B(g.Text(text)))
+					} else {
+						return h.Div(h.A(g.Text(text), h.Href(cc.Category)))
+					}
+				})),
+			h.Table(h.Class("striped"),
+				h.THead(
+					h.Th(g.Text("id")),
+					h.Th(g.Text("text")),
+					h.Th(g.Text("created")),
+				),
+				h.TBody(
+					g.Map(noteList, func(note notes.Note) g.Node {
+						return h.Tr(h.ID("note-"+note.ID),
+							h.Td(h.A(h.Href("/notes/"+category+"/"+note.ID), g.Text(note.ID[0:7]))),
+							h.Td(linkifyNode(note.Text)),
+							h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
+							h.Td(h.Style("padding:0"),
+								g.If(category == "inbox",
+									h.Div(h.Style("display:flex; gap:5px"),
+										g.Map(categories,
+											func(category string) g.Node {
+												return h.Button(
+													h.Style("padding:0 .5em"),
+													h.Class("outline"),
+													g.Text(category),
+													g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
+													g.Attr("hx-target", "#note-"+note.ID),
+													g.Attr("hx-swap", "delete swap:1s"),
+												)
+											})))))
+					}))),
+		))).Render(w)
 }
 
 var categories = []string{"task", "reminder", "idea", "reference", "observation"}
