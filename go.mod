@@ -10,7 +10,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/rcy/disco v0.2.2
-	github.com/rcy/evoke v0.0.4
+	github.com/rcy/evoke v0.1.0
 	maragu.dev/gomponents v1.2.0
 	modernc.org/sqlite v1.38.2
 	mvdan.cc/xurls/v2 v2.6.0

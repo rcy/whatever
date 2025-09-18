@@ -1,57 +1,41 @@
 package events
 
-const RealmAggregate = "realm"
+type realmEvent struct{}
 
-// RealmCreated
+func (realmEvent) Aggregate() string { return "realm" }
+
 type RealmCreated struct {
+	realmEvent
 	Name string
 }
 
-func (RealmCreated) EventType() string { return "RealmCreated" }
-func (RealmCreated) Aggregate() string { return RealmAggregate }
+type RealmDeleted struct{ realmEvent }
 
-type RealmDeleted struct{}
+type noteEvent struct{}
 
-func (RealmDeleted) EventType() string { return "RealmDeleted" }
-func (RealmDeleted) Aggregate() string { return RealmAggregate }
+func (noteEvent) Aggregate() string { return "note" }
 
-const NoteAggregate = "note"
-
-// NoteCreated
 type NoteCreated struct {
+	noteEvent
 	RealmID string
 	Text    string
 }
 
-func (NoteCreated) EventType() string { return "NoteCreated" }
-func (NoteCreated) Aggregate() string { return NoteAggregate }
+type NoteTextUpdated struct {
+	noteEvent
+	Text string
+}
 
-// NoteTextUpdated
-type NoteTextUpdated struct{ Text string }
+type NoteDeleted struct{ noteEvent }
 
-func (NoteTextUpdated) EventType() string { return "NoteTextUpdated" }
-func (NoteTextUpdated) Aggregate() string { return NoteAggregate }
+type NoteUndeleted struct{ noteEvent }
 
-// NoteDeleted
-type NoteDeleted struct{}
+type NoteCategoryChanged struct {
+	noteEvent
+	Category string
+}
 
-func (NoteDeleted) EventType() string { return "NoteDeleted" }
-func (NoteDeleted) Aggregate() string { return NoteAggregate }
-
-// NoteUndeleted
-type NoteUndeleted struct{}
-
-func (NoteUndeleted) EventType() string { return "NoteUndeleted" }
-func (NoteUndeleted) Aggregate() string { return NoteAggregate }
-
-// NoteCategoryChanged
-type NoteCategoryChanged struct{ Category string }
-
-func (NoteCategoryChanged) EventType() string { return "NoteCategoryChanged" }
-func (NoteCategoryChanged) Aggregate() string { return NoteAggregate }
-
-// NoteRealmChanged
-type NoteRealmChanged struct{ RealmID string }
-
-func (NoteRealmChanged) EventType() string { return "NoteRealmChanged" }
-func (NoteRealmChanged) Aggregate() string { return NoteAggregate }
+type NoteRealmChanged struct {
+	noteEvent
+	RealmID string
+}
