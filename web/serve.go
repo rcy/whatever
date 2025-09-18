@@ -143,11 +143,11 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		h.Div(h.Style("display:flex; gap:1em"),
 			//h.A(g.Text("inbox"), h.Href("?category=inbox")),
 			g.Map(categoryCounts, func(cc notes.CategoryCount) g.Node {
-				if cc.Count > 0 {
-					return h.A(g.Text(fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)),
-						h.Href(cc.Category))
+				text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
+				if cc.Category == category {
+					return g.Text(text)
 				} else {
-					return g.Text(cc.Category)
+					return h.A(g.Text(text), h.Href(cc.Category))
 				}
 			}),
 			//h.A(g.Text("all"), h.Href("?category")),
