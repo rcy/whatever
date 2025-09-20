@@ -111,16 +111,30 @@ func page(currentRealmID string, realmList []realms.Realm, main g.Node) g.Node {
 		))
 }
 
+func page2(realmID string, realmList []realms.Realm, category string, categoryCounts []notes.CategoryCount, content g.Node) g.Node {
+	return page(realmID, realmList, h.Div(h.ID("page"),
+		h.Form(h.Input(h.Name("text"), h.Placeholder("add note...")),
+			g.Attr("hx-post", "/notes"),
+			g.Attr("hx-swap", "outerHTML"),
+			g.Attr("hx-target", "#page"),
+			g.Attr("hx-select", "#page")),
+		h.Div(h.Style("display:flex; gap: 2em"),
+			h.Div(h.Style("display:flex;flex-direction:column; margin-top: 2em; white-space: nowrap"),
+				g.Map(categoryCounts, func(cc notes.CategoryCount) g.Node {
+					text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
+					if cc.Category == category {
+						return h.Div(h.B(g.Text(text)))
+					} else {
+						return h.Div(h.A(g.Text(text), h.Href("/notes/"+cc.Category)))
+					}
+				})),
+			content,
+		)))
+}
+
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
-
-	noteList, err := s.app.Notes().FindAllInRealmByCategory(realmID, category)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	slices.Reverse(noteList)
 
 	categoryCounts, err := s.app.Notes().CategoryCounts(realmID)
 	if err != nil {
@@ -134,50 +148,41 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page(realmID, realmList, h.Div(h.ID("page"),
-		h.Form(h.Input(h.Name("text"), h.Placeholder("add note...")),
-			g.Attr("hx-post", "/notes"),
-			g.Attr("hx-swap", "outerHTML"),
-			g.Attr("hx-target", "#page"),
-			g.Attr("hx-select", "#page")),
-		h.Div(h.Style("display:flex; gap: 2em"),
-			h.Div(h.Style("display:flex;flex-direction:column; margin-top: 2em; white-space: nowrap"),
-				g.Map(categoryCounts, func(cc notes.CategoryCount) g.Node {
-					text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
-					if cc.Category == category {
-						return h.Div(h.B(g.Text(text)))
-					} else {
-						return h.Div(h.A(g.Text(text), h.Href(cc.Category)))
-					}
-				})),
-			h.Table(h.Class("striped"),
-				h.THead(
-					h.Th(g.Text("id")),
-					h.Th(g.Text("text")),
-					h.Th(g.Text("created")),
-				),
-				h.TBody(
-					g.Map(noteList, func(note notes.Note) g.Node {
-						return h.Tr(h.ID("note-"+note.ID),
-							h.Td(h.A(h.Href("/notes/"+category+"/"+note.ID), g.Text(note.ID[0:7]))),
-							h.Td(linkifyNode(note.Text)),
-							h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
-							h.Td(h.Style("padding:0"),
-								g.If(category == "inbox",
-									h.Div(h.Style("display:flex; gap:5px"),
-										g.Map(categories,
-											func(category string) g.Node {
-												return h.Button(
-													h.Style("padding:0 .5em"),
-													h.Class("outline"),
-													g.Text(category),
-													g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
-													g.Attr("hx-target", "#note-"+note.ID),
-													g.Attr("hx-swap", "delete swap:1s"),
-												)
-											})))))
-					}))),
-		))).Render(w)
+	noteList, err := s.app.Notes().FindAllInRealmByCategory(realmID, category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(noteList)
+
+	page2(realmID, realmList, category, categoryCounts,
+		h.Table(h.Class("striped"),
+			h.THead(
+				h.Th(g.Text("id")),
+				h.Th(g.Text("text")),
+				h.Th(g.Text("created")),
+			),
+			h.TBody(
+				g.Map(noteList, func(note notes.Note) g.Node {
+					return h.Tr(h.ID("note-"+note.ID),
+						h.Td(h.A(h.Href("/notes/"+category+"/"+note.ID), g.Text(note.ID[0:7]))),
+						h.Td(linkifyNode(note.Text)),
+						h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
+						h.Td(h.Style("padding:0"),
+							g.If(category == "inbox",
+								h.Div(h.Style("display:flex; gap:5px"),
+									g.Map(categories,
+										func(category string) g.Node {
+											return h.Button(
+												h.Style("padding:0 .5em"),
+												h.Class("outline"),
+												g.Text(category),
+												g.Attr("hx-post", fmt.Sprintf("/notes/%s/set/%s", note.ID, category)),
+												g.Attr("hx-target", "#note-"+note.ID),
+												g.Attr("hx-swap", "delete swap:1s"),
+											)
+										})))))
+				})))).Render(w)
 }
 
 var categories = []string{"task", "reminder", "idea", "reference", "observation"}
@@ -229,7 +234,7 @@ func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
-	realm := realmFromRequest(r)
+	realmID := realmFromRequest(r)
 
 	id := chi.URLParam(r, "id")
 
@@ -245,24 +250,25 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	noteNode(realm, realmList, note, h.Div(
-		h.P(linkifyNode(note.Text)),
-		h.A(h.Href(note.ID+"/edit"), g.Text("edit")),
-	)).Render(w)
+	categoryCounts, err := s.app.Notes().CategoryCounts(realmID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page2(realmID, realmList, note.Category, categoryCounts,
+		noteNode(realmID, realmList, note, h.Div(
+			h.P(linkifyNode(note.Text)),
+			h.A(h.Href(note.ID+"/edit"), g.Text("edit")),
+		))).Render(w)
 }
 
 func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request) {
-	realm := realmFromRequest(r)
+	realmID := realmFromRequest(r)
 
 	id := chi.URLParam(r, "id")
 
 	note, err := s.app.Notes().FindOne(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	realmList, err := s.app.Realms().FindAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -270,14 +276,26 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 
 	switch r.Method {
 	case "GET":
-		noteNode(realm, realmList, note, g.Group{
-			h.Form(h.Method("post"),
-				h.Input(h.Name("text"), h.Value(note.Text)),
-				h.Div(h.Style("display:flex; gap:1em"),
-					h.Button(h.Style("padding: 0 .5em"), g.Text("save")),
-					h.Div(h.A(g.Text("cancel"), h.Href("/notes/"+note.Category+"/"+note.ID)))),
-			),
-		}).Render(w)
+		realmList, err := s.app.Realms().FindAll()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		categoryCounts, err := s.app.Notes().CategoryCounts(realmID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		page2(realmID, realmList, note.Category, categoryCounts,
+			noteNode(realmID, realmList, note,
+				h.Form(h.Method("post"),
+					h.Input(h.Name("text"), h.Value(note.Text)),
+					h.Div(h.Style("display:flex; gap:1em"),
+						h.Button(h.Style("padding: 0 .5em"), g.Text("save")),
+						h.Div(h.A(g.Text("cancel"), h.Href("/notes/"+note.Category+"/"+note.ID)))),
+				),
+			)).Render(w)
 	case "POST":
 		text := strings.TrimSpace(r.FormValue("text"))
 		err := s.app.Commands().UpdateNoteText(id, text)
@@ -294,36 +312,35 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 
 func noteNode(realm string, realmList []realms.Realm, note notes.Note, slot g.Node) g.Node {
 	base := fmt.Sprintf("/notes/%s/set/", note.ID)
-	return page(realm, realmList, g.Group{
-		h.Div(h.ID("hxnote"),
-			h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
-				h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
-					g.Map(categories,
-						func(category string) g.Node {
-							return h.Button(
-								g.If(category != note.Category, h.Class("outline")),
-								h.Style("padding:0 .5em; margin:0"),
-								g.Text(category),
-								g.Attr("hx-post", base+category),
-								g.Attr("hx-target", "#hxnote"),
-								g.Attr("hx-select", "#hxnote"),
-								g.Attr("hx-swap", "outerHTML"),
-							)
-						}),
-				),
+	return h.Div(h.ID("hxnote"),
+		h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
+			h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
+				g.Map(categories,
+					func(category string) g.Node {
+						return h.Button(
+							g.If(category != note.Category, h.Class("outline")),
+							h.Style("padding:0 .5em; margin:0"),
+							g.Text(category),
+							g.Attr("hx-post", base+category),
+							g.Attr("hx-target", "#hxnote"),
+							g.Attr("hx-select", "#hxnote"),
+							g.Attr("hx-swap", "outerHTML"),
+						)
+					}),
+			),
 
-				h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/%s/delete", note.Category, note.ID)),
-					h.Button(
-						h.Style("padding:0 .5em"),
-						h.Class("outline secondary"),
-						g.Text("delete"),
-					),
+			h.Form(h.Method("post"), h.Action(fmt.Sprintf("/notes/%s/%s/delete", note.Category, note.ID)),
+				h.Button(
+					h.Style("padding:0 .5em"),
+					h.Class("outline secondary"),
+					g.Text("delete"),
 				),
 			),
-			h.P(g.Text("Created: "+note.Ts.String())),
-			h.Hr(),
-			slot,
-		)})
+		),
+		h.P(g.Text("Created: "+note.Ts.String())),
+		h.Hr(),
+		slot,
+	)
 }
 
 func (s *webservice) deleteNoteHandler(w http.ResponseWriter, r *http.Request) {
