@@ -34,8 +34,10 @@ type NoteCategoryChanged struct {
 	noteEvent
 	Category string
 }
-
 type NoteRealmChanged struct {
 	noteEvent
 	RealmID string
 }
+type NoteTaskCompleted struct{ noteEvent }
+type NoteTaskDeferred struct{ noteEvent }
+type NoteTaskReopened struct{ noteEvent }

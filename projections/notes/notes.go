@@ -86,13 +86,13 @@ func New(e *evoke.Service) (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null, ts timestamp not null, text not null, category not null, realm_id not null)`)
+	_, err = db.Exec(`create table notes(id not null, ts timestamp not null, text not null, category not null, realm_id not null, state not null, status not null)`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null, ts timestamp not null, text not null, category not null, realm_id not null)`)
+	_, err = db.Exec(`create table deleted_notes(id not null, ts timestamp not null, text not null, category not null, realm_id not null, state not null, status not null)`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
 
 	return &Projection{db: db}, nil
@@ -105,6 +105,7 @@ func (p *Projection) Subscribe(e *evoke.Service) {
 	e.SubscribeSync(events.NoteTextUpdated{}, p.noteTextUpdated)
 	e.SubscribeSync(events.NoteCategoryChanged{}, p.noteCategoryChanged)
 	e.SubscribeSync(events.NoteRealmChanged{}, p.noteRealmChanged)
+	e.SubscribeSync(events.NoteTaskCompleted{}, p.noteTaskCompleted)
 }
 
 func (p *Projection) noteCreated(event evoke.Event, _ bool) error {
@@ -113,8 +114,8 @@ func (p *Projection) noteCreated(event evoke.Event, _ bool) error {
 		return err
 	}
 
-	q := `insert into notes(id, ts, text, realm_id, category) values(?,?,?,?,?)`
-	_, err = p.db.Exec(q, event.AggregateID, event.CreatedAt, payload.Text, payload.RealmID, "inbox")
+	q := `insert into notes(id, ts, text, realm_id, category, state, status) values(?,?,?,?,?,?,?)`
+	_, err = p.db.Exec(q, event.AggregateID, event.CreatedAt, payload.Text, payload.RealmID, "inbox", "open", "active")
 	if err != nil {
 		return err
 	}
@@ -123,7 +124,7 @@ func (p *Projection) noteCreated(event evoke.Event, _ bool) error {
 }
 
 func (p *Projection) noteDeleted(event evoke.Event, _ bool) error {
-	q := `insert into deleted_notes(id, ts, text, realm_id, category) select id, ts, text, realm_id, category from notes where id = ?`
+	q := `insert into deleted_notes(id, ts, text, realm_id, category, state, status) select id, ts, text, realm_id, category, state, status from notes where id = ?`
 	_, err := p.db.Exec(q, event.AggregateID)
 	if err != nil {
 		return err
@@ -174,5 +175,20 @@ func (p *Projection) noteRealmChanged(event evoke.Event, _ bool) error {
 
 	q := `update notes set realm_id = ? where id = ?`
 	_, err = p.db.Exec(q, payload.RealmID, event.AggregateID)
+	return err
+}
+
+func (p *Projection) noteTaskCompleted(event evoke.Event, _ bool) error {
+	_, err := p.db.Exec(`update notes set state = 'closed', status = 'completed'`)
+	return err
+}
+
+func (p *Projection) noteTaskReopened(event evoke.Event, _ bool) error {
+	_, err := p.db.Exec(`update notes set state = 'open', status = 'open'`)
+	return err
+}
+
+func (p *Projection) noteTaskDeferred(event evoke.Event, _ bool) error {
+	_, err := p.db.Exec(`update notes set state = 'closed', status = 'deferred'`)
 	return err
 }
