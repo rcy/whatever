@@ -1,35 +1,42 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/cli"
-	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/version"
 )
 
 func main() {
-	filename, err := getFilename()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// filename, err := getFilename()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	es, err := evoke.NewStore(evoke.Config{DBFile: filename})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer es.Close()
+	a := app.New()
 
-	cs := commands.New(es)
+	// noteID := uuid.New()
+	// realmID := uuid.New()
+	// cmds := []evoke.Command{
+	// 	//commands.CreateRealmCommand{RealmID: realmID, Name: "MyRealm"},
+	// 	commands.CreateNoteCommand{NoteID: noteID, Text: "hello", RealmID: realmID},
+	// 	// commands.CreateNoteCommand{NoteID: uuid.New(), Text: "random", RealmID: realmID},
+	// 	//commands.DeleteNoteCommand{NoteID: noteID},
+	// 	// commands.UndeleteNoteCommand{NoteID: noteID},
+	// }
+	// for _, cmd := range cmds {
+	// 	err := a.CommandBus().Send(cmd)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }
 
-	as := app.New(cs, es)
+	//a.CommandBus().MustSend(commands.CreateRealmCommand{RealmID: uuid.New(), Name: "MyRealm"})
 
 	kctx := kong.Parse(&cli.CLI)
-	err = kctx.Run(as)
+	err := kctx.Run(a)
 	kctx.FatalIfErrorf(err)
 }
 

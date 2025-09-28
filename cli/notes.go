@@ -5,8 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/projections/notes"
+	"github.com/rcy/whatever/commands"
+	"github.com/rcy/whatever/projections/note"
 )
 
 type NotesCmd struct {
@@ -23,20 +25,19 @@ type ListCmd struct {
 }
 
 func (c *ListCmd) Run(app *app.App) error {
-	var noteList []notes.Note
+	var noteList []note.Note
 	var err error
 	if c.Deleted {
-		noteList, err = app.Notes().FindAllDeleted()
+		noteList, err = app.Notes.FindAllDeleted()
 	} else {
-		noteList, err = app.Notes().FindAll()
+		noteList, err = app.Notes.FindAll()
 	}
 	if err != nil {
 		return err
 	}
 	for _, note := range noteList {
-		fmt.Printf("%s %s %s %s\n", note.RealmID, note.ID[0:7], note.Category, note.Text)
+		fmt.Printf("%s %s %s %s\n", note.ID, note.RealmID, note.Category, note.Text)
 	}
-
 	return nil
 }
 
@@ -45,53 +46,66 @@ type ShowCmd struct {
 }
 
 func (c *ShowCmd) Run(app *app.App) error {
-	id, _ := app.Events().GetAggregateID(c.ID)
-	note, err := app.Notes().FindOne(id)
-	eventList, err := app.Events().LoadAggregateEvents(id)
+	note, err := app.Notes.FindOne(c.ID)
 	if err != nil {
 		return err
 	}
-	for _, e := range eventList {
-		fmt.Printf("%7s %s %-15s %v\n", "", e.CreatedAt.Local().Format(time.DateTime), e.EventType, string(e.EventData))
-	}
-
 	fmt.Printf("%s %s %s\n", note.ID[0:7], note.Ts.Local().Format(time.DateTime), note.Text)
 	return nil
 }
 
 type AddCmd struct {
-	Text  []string `arg:""`
 	Realm string
+	Text  []string `arg:""`
 }
 
 func (c *AddCmd) Run(app *app.App) error {
-	aggID, err := app.Commands().CreateNote(c.Realm, strings.Join(c.Text, " "))
-	fmt.Println(aggID)
-	return err
+	realm, err := app.Realms.FindByName(c.Realm)
+	if err != nil {
+		return err
+	}
+
+	noteID := uuid.New()
+	err = app.Commander.Send(commands.CreateNote{
+		NoteID:  noteID,
+		RealmID: realm.ID,
+		Text:    strings.Join(c.Text, " "),
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Println(noteID)
+	return nil
 }
 
 type EditCmd struct {
-	ID   string   `arg:""`
-	Text []string `arg:""`
+	NoteID uuid.UUID `arg:""`
+	Text   []string  `arg:""`
 }
 
 func (c *EditCmd) Run(app *app.App) error {
-	err := app.Commands().UpdateNoteText(c.ID, strings.Join(c.Text, " "))
-	return err
+	return app.Commander.Send(commands.UpdateNoteText{
+		NoteID: c.NoteID,
+		Text:   strings.Join(c.Text, " "),
+	})
 }
 
 type DeleteCmd struct {
-	ID string `arg:""`
+	ID uuid.UUID `arg:""`
 }
 
 func (c *DeleteCmd) Run(app *app.App) error {
-	return app.Commands().DeleteNote(c.ID)
+	return app.Commander.Send(commands.DeleteNote{
+		NoteID: c.ID,
+	})
 }
 
 type UndeleteCmd struct {
-	ID string `arg:""`
+	ID uuid.UUID `arg:""`
 }
 
 func (c *UndeleteCmd) Run(app *app.App) error {
-	return app.Commands().UndeleteNote(c.ID)
+	return app.Commander.Send(commands.UndeleteNote{
+		NoteID: c.ID,
+	})
 }
