@@ -10,30 +10,7 @@ import (
 )
 
 func main() {
-	// filename, err := getFilename()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	a := app.New()
-
-	// noteID := uuid.New()
-	// realmID := uuid.New()
-	// cmds := []evoke.Command{
-	// 	//commands.CreateRealmCommand{RealmID: realmID, Name: "MyRealm"},
-	// 	commands.CreateNoteCommand{NoteID: noteID, Text: "hello", RealmID: realmID},
-	// 	// commands.CreateNoteCommand{NoteID: uuid.New(), Text: "random", RealmID: realmID},
-	// 	//commands.DeleteNoteCommand{NoteID: noteID},
-	// 	// commands.UndeleteNoteCommand{NoteID: noteID},
-	// }
-	// for _, cmd := range cmds {
-	// 	err := a.CommandBus().Send(cmd)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }
-
-	//a.CommandBus().MustSend(commands.CreateRealmCommand{RealmID: uuid.New(), Name: "MyRealm"})
 
 	kctx := kong.Parse(&cli.CLI)
 	err := kctx.Run(a)
