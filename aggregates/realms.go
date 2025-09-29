@@ -51,12 +51,13 @@ func (a *realmAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error)
 	return nil, fmt.Errorf("unhandled")
 }
 
-func (a *realmAggregate) Apply(e evoke.Event) {
+func (a *realmAggregate) Apply(e evoke.Event) error {
 	switch evt := e.(type) {
 	case events.RealmCreated:
 		a.id = evt.RealmID
 		a.name = evt.Name
 	default:
-		panic(fmt.Sprintf("realmAggregate.Apply(%T): not handled", e))
+		return fmt.Errorf("not handled")
 	}
+	return nil
 }

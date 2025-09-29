@@ -12,9 +12,10 @@ import (
 )
 
 type noteAggregate struct {
-	id      uuid.UUID
-	text    string
-	deleted bool
+	id       uuid.UUID
+	deleted  bool
+	text     string
+	category string
 }
 
 func NewNoteAggregate(id uuid.UUID) *noteAggregate {
@@ -83,7 +84,7 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 	return nil, fmt.Errorf("unhandled")
 }
 
-func (a *noteAggregate) Apply(e evoke.Event) {
+func (a *noteAggregate) Apply(e evoke.Event) error {
 	switch evt := e.(type) {
 	case events.NoteCreated:
 		a.id = evt.NoteID // should already be set?
@@ -92,7 +93,12 @@ func (a *noteAggregate) Apply(e evoke.Event) {
 		a.deleted = true
 	case events.NoteUndeleted:
 		a.deleted = false
-		// default:
-		// 	return fmt.Errorf("not handled")
+	case events.NoteTextUpdated:
+		a.text = evt.Text
+	case events.NoteCategoryChanged:
+		a.category = evt.Category
+	default:
+		return fmt.Errorf("not handled")
 	}
+	return nil
 }
