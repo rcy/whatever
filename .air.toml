@@ -16,14 +16,14 @@ tmp_dir = "tmp"
   include_dir = []
   include_ext = ["go", "tpl", "tmpl", "html", "css"]
   include_file = []
-  kill_delay = "10s"
+  kill_delay = "500ms"
   log = "build-errors.log"
   poll = false
   poll_interval = 0
   post_cmd = []
   pre_cmd = []
-  rerun = true
-  rerun_delay = 5000
+  rerun = false
+  rerun_delay = 100
   send_interrupt = true
   stop_on_error = true
 
