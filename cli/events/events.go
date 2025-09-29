@@ -2,8 +2,8 @@ package events
 
 import (
 	"fmt"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 )
@@ -13,30 +13,27 @@ type Cmd struct {
 }
 
 type ListCmd struct {
-	ID string
+	AggregateID uuid.UUID
 }
 
 func (c *ListCmd) Run(app *app.App) error {
-	var events []evoke.Event
-	if c.ID != "" {
-		aggID, err := app.Events().GetAggregateID(c.ID)
-		if err != nil {
-			return err
-		}
-		events, err = app.Events().LoadAggregateEvents(aggID)
+	var events []evoke.RecordedEvent
+	if c.AggregateID != uuid.Nil {
+		var err error
+		events, err = app.Events().LoadStream(c.AggregateID)
 		if err != nil {
 			return err
 		}
 	} else {
 		var err error
-		events, err = app.Events().LoadAllEvents(false)
+		events, err = app.Events().DebugEvents()
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, e := range events {
-		fmt.Printf("%d\t%s\t%s\t%s\t%s\n", e.EventID, e.AggregateID[0:5], e.EventType, e.CreatedAt.Format(time.RFC3339), e.EventData)
+		fmt.Printf("%d\t%s\t%s\t%s\t%s\n", e.Sequence, e.AggregateID.String(), e.Event.EventType(), e.Event)
 	}
 	return nil
 }

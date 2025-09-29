@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/rcy/whatever/app"
-	"github.com/rcy/whatever/projections/realms"
+	"github.com/rcy/whatever/commands"
+	"github.com/rcy/whatever/projections/realm"
 )
 
 type Cmd struct {
@@ -19,14 +21,14 @@ type listCmd struct {
 }
 
 func (c *listCmd) Run(app *app.App) error {
-	var realmList []realms.Realm
+	var realmList []realm.Realm
 	var err error
-	realmList, err = app.Realms().FindAll()
+	realmList, err = app.Realms.FindAll()
 	if err != nil {
 		return err
 	}
 	for _, realm := range realmList {
-		fmt.Printf("%s %s\n", realm.ID[0:7], realm.Name)
+		fmt.Printf("%s %s\n", realm.ID, realm.Name)
 	}
 
 	return nil
@@ -37,15 +39,16 @@ type addCmd struct {
 }
 
 func (c *addCmd) Run(app *app.App) error {
-	aggID, err := app.Commands().CreateRealm(strings.Join(c.Text, " "))
-	fmt.Println(aggID)
+	realmID := uuid.New()
+	err := app.Commander.Send(commands.CreateRealm{RealmID: realmID, Name: strings.Join(c.Text, " ")})
+	fmt.Println(realmID)
 	return err
 }
 
 type deleteCmd struct {
-	ID string `arg:""`
+	ID uuid.UUID `arg:""`
 }
 
 func (c *deleteCmd) Run(app *app.App) error {
-	return app.Commands().DeleteRealm(c.ID)
+	return app.Commander.Send(commands.DeleteRealm{RealmID: c.ID})
 }

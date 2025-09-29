@@ -1,35 +1,19 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/cli"
-	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/version"
 )
 
 func main() {
-	filename, err := getFilename()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	es, err := evoke.NewStore(evoke.Config{DBFile: filename})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer es.Close()
-
-	cs := commands.New(es)
-
-	as := app.New(cs, es)
+	a := app.New()
 
 	kctx := kong.Parse(&cli.CLI)
-	err = kctx.Run(as)
+	err := kctx.Run(a)
 	kctx.FatalIfErrorf(err)
 }
 

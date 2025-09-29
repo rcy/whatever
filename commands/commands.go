@@ -1,117 +1,59 @@
 package commands
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/rcy/evoke"
-	"github.com/rcy/whatever/events"
+	"github.com/google/uuid"
 )
 
-type Service struct {
-	Events evoke.Inserter
+type CreateRealm struct {
+	RealmID uuid.UUID
+	Name    string
 }
 
-func New(events evoke.Inserter) *Service {
-	return &Service{Events: events}
+func (c CreateRealm) AggregateID() uuid.UUID { return c.RealmID }
+
+type DeleteRealm struct {
+	RealmID uuid.UUID
 }
 
-func (s *Service) CreateRealm(name string) (string, error) {
-	aggID := evoke.ID()
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return "", fmt.Errorf("name cannot be empty")
-	}
-	err := s.Events.Insert(aggID, events.RealmCreated{Name: name})
-	if err != nil {
-		return "", err
-	}
-	return aggID, nil
+func (c DeleteRealm) AggregateID() uuid.UUID { return c.RealmID }
+
+type CreateNote struct {
+	NoteID  uuid.UUID
+	RealmID uuid.UUID
+	Text    string
 }
 
-func (s *Service) DeleteRealm(realmID string) error {
-	aggID, err := s.Events.GetAggregateID(realmID)
-	if err != nil {
-		return err
-	}
+func (c CreateNote) AggregateID() uuid.UUID { return c.NoteID }
 
-	err = s.Events.Insert(aggID, events.RealmDeleted{})
-	if err != nil {
-		return err
-	}
-	return nil
+type DeleteNote struct {
+	NoteID uuid.UUID
 }
 
-func (s *Service) CreateNote(realmID string, text string) (string, error) {
-	if realmID == "" {
-		return "", fmt.Errorf("realm cannot be empty")
-	}
+func (c DeleteNote) AggregateID() uuid.UUID { return c.NoteID }
 
-	aggID := evoke.ID()
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return "", fmt.Errorf("text cannot be empty")
-	}
-	err := s.Events.Insert(aggID, events.NoteCreated{RealmID: realmID, Text: text})
-	if err != nil {
-		return "", err
-	}
-	return aggID, nil
+type UndeleteNote struct {
+	NoteID uuid.UUID
 }
 
-func (s *Service) DeleteNote(id string) error {
-	aggID, err := s.Events.GetAggregateID(id)
-	if err != nil {
-		return err
-	}
+func (c UndeleteNote) AggregateID() uuid.UUID { return c.NoteID }
 
-	return s.Events.Insert(aggID, events.NoteDeleted{})
+type UpdateNoteText struct {
+	NoteID uuid.UUID
+	Text   string
 }
 
-func (s *Service) UndeleteNote(id string) error {
-	aggID, err := s.Events.GetAggregateID(id)
-	if err != nil {
-		return err
-	}
+func (c UpdateNoteText) AggregateID() uuid.UUID { return c.NoteID }
 
-	return s.Events.Insert(aggID, events.NoteUndeleted{})
+type SetNoteRealm struct {
+	NoteID  uuid.UUID
+	RealmID string
 }
 
-func (s *Service) UpdateNoteText(id string, text string) error {
-	aggID, err := s.Events.GetAggregateID(id)
-	if err != nil {
-		return err
-	}
+func (c SetNoteRealm) AggregateID() uuid.UUID { return c.NoteID }
 
-	err = s.Events.Insert(aggID, events.NoteTextUpdated{Text: text})
-	if err != nil {
-		return err
-	}
-	return nil
+type SetNoteCategory struct {
+	NoteID   uuid.UUID
+	Category string
 }
 
-func (s *Service) SetNoteRealm(id string, realmID string) error {
-	aggID, err := s.Events.GetAggregateID(id)
-	if err != nil {
-		return err
-	}
-
-	err = s.Events.Insert(aggID, events.NoteRealmChanged{RealmID: realmID})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Service) SetNoteCategory(id string, text string) error {
-	aggID, err := s.Events.GetAggregateID(id)
-	if err != nil {
-		return err
-	}
-
-	err = s.Events.Insert(aggID, events.NoteCategoryChanged{Category: text})
-	if err != nil {
-		return err
-	}
-	return nil
-}
+func (c SetNoteCategory) AggregateID() uuid.UUID { return c.NoteID }

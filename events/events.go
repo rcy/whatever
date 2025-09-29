@@ -1,41 +1,58 @@
 package events
 
-type realmEvent struct{}
+import (
+	"time"
 
-func (realmEvent) Aggregate() string { return "realm" }
+	"github.com/google/uuid"
+)
 
 type RealmCreated struct {
-	realmEvent
-	Name string
+	RealmID   uuid.UUID
+	CreatedAt time.Time
+	Name      string
 }
 
-type RealmDeleted struct{ realmEvent }
-
-type noteEvent struct{}
-
-func (noteEvent) Aggregate() string { return "note" }
+type RealmDeleted struct {
+	RealmID uuid.UUID
+}
 
 type NoteCreated struct {
-	noteEvent
-	RealmID string
-	Text    string
+	NoteID    uuid.UUID
+	CreatedAt time.Time
+	RealmID   uuid.UUID
+	Text      string
 }
 
 type NoteTextUpdated struct {
-	noteEvent
-	Text string
+	NoteID uuid.UUID
+	Text   string
 }
 
-type NoteDeleted struct{ noteEvent }
+type NoteDeleted struct {
+	NoteID uuid.UUID
+}
 
-type NoteUndeleted struct{ noteEvent }
+type NoteUndeleted struct {
+	NoteID uuid.UUID
+}
 
 type NoteCategoryChanged struct {
-	noteEvent
+	NoteID   uuid.UUID
 	Category string
 }
 
 type NoteRealmChanged struct {
-	noteEvent
 	RealmID string
+}
+
+type NoteTaskCompleted struct {
+	NoteID uuid.UUID
+}
+
+type NoteTaskDeferred struct {
+	NoteID uuid.UUID
+}
+
+type NoteTaskReopened struct {
+	NoteID uuid.UUID
 }

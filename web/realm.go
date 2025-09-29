@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/rcy/whatever/commands"
 )
 
 const realmCookieName = "whatever.realmID"
 
 const realmContextKey = "realm"
 
-func realmFromRequest(r *http.Request) string {
-	return r.Context().Value(realmContextKey).(string)
+func realmFromRequest(r *http.Request) uuid.UUID {
+	return r.Context().Value(realmContextKey).(uuid.UUID)
 }
 
 func (s *webservice) realmMiddleware(next http.Handler) http.Handler {
@@ -19,41 +22,41 @@ func (s *webservice) realmMiddleware(next http.Handler) http.Handler {
 		// Get the realm stored in the cookie, ensure it is
 		// valid, or create a new realm if necessary.
 
-		var realmID string
+		var realmID uuid.UUID
 		cookie, err := r.Cookie(realmCookieName)
 		if err == nil { // no error
-			realm, err := s.app.Realms().FindByID(cookie.Value)
+			realmID, err := uuid.Parse(cookie.Value)
+
+			realm, err := s.app.Realms.FindByID(realmID)
 			if err != nil {
-				realmID = ""
+				realmID = uuid.Nil
 			} else {
 				realmID = realm.ID
 			}
 		}
 
 		// no realm from cookie, see if any realm at all exists and try to use that
-		if realmID == "" {
-			realm, err := s.app.Realms().FindOldest()
+		if realmID == uuid.Nil {
+			realm, err := s.app.Realms.FindOldest()
 			if err != nil {
-				realmID = ""
+				realmID = uuid.Nil
 			} else {
 				realmID = realm.ID
 			}
 		}
 
 		// still no realm, create a new one
-		if realmID == "" {
-			aggID, err := s.app.Commands().CreateRealm("personal")
+		if realmID == uuid.Nil {
+			realmID = uuid.New()
+			err := s.app.Commander.Send(commands.CreateRealm{RealmID: realmID, Name: "default"})
 			if err != nil {
 				http.Error(w, fmt.Sprintf("CreateRealm: %s", err), http.StatusInternalServerError)
 				return
 			}
-
-			// since the realm projection is syncronously materialized in the command handler, we can do this:
-			realmID = aggID
 		}
 
 		// set/refresh cookie
-		s.setRealmCookie(w, r, realmID)
+		s.setRealmCookie(w, r, realmID.String())
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), realmContextKey, realmID)))
 	})
 }
