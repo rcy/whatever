@@ -5,9 +5,5 @@ in
 with nixpkgs; mkShell {
   buildInputs = [
     air
-    go
-    golint
-    gopls
-    golangci-lint
   ];
 }
