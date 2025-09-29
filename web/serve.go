@@ -57,8 +57,8 @@ func Server(app *app.App) *chi.Mux {
 			r.HandleFunc("/{id}/edit", svc.showEditNoteHandler)
 
 			r.Post("/{id}/delete", svc.deleteNoteHandler)
-			r.Post("/{id}/undelete", svc.undeleteNoteHandler)
 		})
+		r.Post("/{id}/undelete", svc.undeleteNoteHandler)
 	})
 
 	return r
