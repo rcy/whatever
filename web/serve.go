@@ -210,16 +210,15 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	page2(realmID, realmList, category, categoryCounts,
 		h.Table(h.Class("striped"),
 			h.THead(
-				h.Th(g.Text("id")),
 				h.Th(g.Text("text")),
 				h.Th(g.Text("created")),
 			),
 			h.TBody(
 				g.Map(noteList, func(note note.Note) g.Node {
+					url := fmt.Sprintf("/notes/%s/%s", category, note.ID)
 					return h.Tr(h.ID(fmt.Sprintf("note-%s", note.ID)),
-						h.Td(h.A(h.Href(fmt.Sprintf("/notes/%s/%s", category, note.ID)), g.Text(fmt.Sprint(note.ID)))),
 						h.Td(linkifyNode(note.Text)),
-						h.Td(g.Text(note.Ts.Local().Format(time.DateTime))),
+						h.Td(h.A(h.Href(url), (g.Text(note.Ts.Local().Format(time.DateTime))))),
 						h.Td(h.Style("padding:0"),
 							g.If(category == "inbox",
 								h.Div(h.Style("display:flex; gap:5px"),
