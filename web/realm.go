@@ -68,7 +68,7 @@ func (s *webservice) setRealmCookie(w http.ResponseWriter, r *http.Request, valu
 		Path:     "/",
 		MaxAge:   365 * 24 * 3600,
 		HttpOnly: true,
-		Secure:   r.URL.Scheme == "https",
+		Secure:   s.secureCookie(r),
 		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(w, &cookie)
