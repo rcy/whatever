@@ -1,30 +1,27 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/alecthomas/kong"
+	"github.com/joho/godotenv"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/cli"
-	"github.com/rcy/whatever/version"
 )
 
 func main() {
-	a := app.New()
+	_ = godotenv.Load()
+	filename, ok := os.LookupEnv("EVOKE_FILE")
+	if !ok {
+		log.Fatal("EVOKE_FILE not set")
+	}
+	a, err := app.New(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	kctx := kong.Parse(&cli.CLI)
-	err := kctx.Run(a)
+	err = kctx.Run(a)
 	kctx.FatalIfErrorf(err)
-}
-
-func getFilename() (string, error) {
-	if os.Getenv("FILENAME") != "" {
-		return os.Getenv("FILENAME"), nil
-	}
-	base, _ := os.UserConfigDir()
-	filename := base + "/whatever/flog.sqlite"
-	if !version.IsRelease() {
-		filename = base + "/whatever-dev/flog.sqlite"
-	}
-	return filename, nil
 }

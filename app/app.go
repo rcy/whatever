@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -19,8 +20,12 @@ type App struct {
 	Realms    *realm.Projection
 }
 
-func New() *App {
-	eventStore, err := evoke.NewFileStore("/tmp/whatever.db")
+func New(filename string) (*App, error) {
+	if filename == "" {
+		return nil, errors.New("filename is empty")
+	}
+
+	eventStore, err := evoke.NewFileStore(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,5 +87,5 @@ func New() *App {
 		Commander: commandBus,
 		Notes:     noteProjection,
 		Realms:    realmProjection,
-	}
+	}, nil
 }
