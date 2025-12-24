@@ -12,6 +12,7 @@ import (
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/projections/note"
 	"github.com/rcy/whatever/projections/realm"
+	"github.com/rcy/whatever/workers/enrich"
 )
 
 type App struct {
@@ -30,11 +31,14 @@ func New(filename string) (*App, error) {
 		log.Fatal(err)
 	}
 	evoke.RegisterEvent(eventStore, &events.NoteCreated{})
+	evoke.RegisterEvent(eventStore, &events.NoteEnrichmentRequested{})
 	evoke.RegisterEvent(eventStore, &events.RealmCreated{})
 	evoke.RegisterEvent(eventStore, &events.NoteDeleted{})
 	evoke.RegisterEvent(eventStore, &events.NoteUndeleted{})
 	evoke.RegisterEvent(eventStore, &events.NoteTextUpdated{})
 	evoke.RegisterEvent(eventStore, &events.NoteCategoryChanged{})
+	evoke.RegisterEvent(eventStore, &events.NoteEnriched{})
+	evoke.RegisterEvent(eventStore, &events.NoteEnrichmentFailed{})
 
 	//
 	// COMMANDS
@@ -48,6 +52,8 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.UndeleteNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.UpdateNoteText{}, noteHandler)
 	commandBus.RegisterHandler(commands.SetNoteCategory{}, noteHandler)
+	commandBus.RegisterHandler(commands.CompleteNoteEnrichment{}, noteHandler)
+	commandBus.RegisterHandler(commands.FailNoteEnrichment{}, noteHandler)
 
 	realmFactory := func(id uuid.UUID) evoke.Aggregate { return aggregates.NewRealmAggregate(id) }
 	realmHandler := evoke.NewAggregateHandler(eventStore, realmFactory)
@@ -67,6 +73,9 @@ func New(filename string) (*App, error) {
 	eventBus.Subscribe(events.NoteUndeleted{}, noteProjection)
 	eventBus.Subscribe(events.NoteTextUpdated{}, noteProjection)
 	eventBus.Subscribe(events.NoteCategoryChanged{}, noteProjection)
+	eventBus.Subscribe(events.NoteEnrichmentRequested{}, noteProjection)
+	eventBus.Subscribe(events.NoteEnriched{}, noteProjection)
+	eventBus.Subscribe(events.NoteEnrichmentFailed{}, noteProjection)
 
 	realmProjection, err := realm.New()
 	if err != nil {
@@ -82,6 +91,10 @@ func New(filename string) (*App, error) {
 
 	// connect the event bus to the store for live events
 	eventStore.RegisterPublisher(eventBus)
+
+	// live-only, async workers
+	enrichWorker := enrich.NewWorker(commandBus)
+	eventBus.Subscribe(events.NoteEnrichmentRequested{}, enrichWorker)
 
 	return &App{
 		Commander: commandBus,

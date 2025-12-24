@@ -43,10 +43,12 @@ func New() (*Projection, error) {
 }
 
 func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
+	fmt.Println(evt)
+
 	switch e := evt.(type) {
 	case events.NoteCreated:
 		q := `insert into notes(id, ts, text, realm_id, category, state, status) values(?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, "inbox", "open", "active")
+		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, "inbox", "open", "")
 		if err != nil {
 			return err
 		}
@@ -73,6 +75,15 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		return err
 	case events.NoteCategoryChanged:
 		_, err := p.db.Exec(`update notes set category = ? where id = ?`, e.Category, e.NoteID)
+		return err
+	case events.NoteEnrichmentRequested:
+		_, err := p.db.Exec(`update notes set status = 'enriching' where id = ?`, e.NoteID)
+		return err
+	case events.NoteEnriched:
+		_, err := p.db.Exec(`update notes set status = '', text = ? || ' ' || text where id = ?`, e.Title, e.NoteID)
+		return err
+	case events.NoteEnrichmentFailed:
+		_, err := p.db.Exec(`update notes set status = 'failure' where id = ?`, e.NoteID)
 		return err
 	default:
 		return fmt.Errorf("note projection event not handled: %T", evt)

@@ -132,6 +132,7 @@ func page(currentRealmID uuid.UUID, realmList []realm.Realm, main g.Node) g.Node
 
 	return h.HTML(h.Lang("en"),
 		h.Head(
+			h.TitleEl(g.Text("Whatever NotNow")),
 			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
 			//h.Meta(h.Name("color-scheme"), h.Content("light dark")),
 			h.Link(h.Rel("stylesheet"), h.Href(fmt.Sprintf("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.%s.min.css", color))),
@@ -217,7 +218,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 				g.Map(noteList, func(note note.Note) g.Node {
 					url := fmt.Sprintf("/notes/%s/%s", category, note.ID)
 					return h.Tr(h.ID(fmt.Sprintf("note-%s", note.ID)),
-						h.Td(linkifyNode(note.Text)),
+						h.Td(linkifyNode(note.Status+" "+note.Text)),
 						h.Td(h.A(h.Href(url), (g.Text(note.Ts.Local().Format(time.DateTime))))),
 						h.Td(h.Style("padding:0"),
 							g.If(category == "inbox",
