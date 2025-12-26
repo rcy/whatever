@@ -4,13 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/hako/durafmt"
 	"github.com/rcy/whatever/app"
+	"github.com/rcy/whatever/projections/note"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
 )
 
 type Config struct {
@@ -71,7 +77,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Use(svc.authMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/notes", http.StatusSeeOther)
+			http.Redirect(w, r, "/dsnotes", http.StatusSeeOther)
 		})
 
 		r.Get("/deleted_notes", svc.deletedNotesHandler)
@@ -81,6 +87,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 			svc.setRealmCookie(w, r, r.FormValue("realm"))
 			w.Header().Set("HX-Redirect", "")
 		})
+
+		r.Get("/dsnotes/{category}", svc.notesIndex)
 
 		r.Route("/notes", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -101,4 +109,84 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	})
 
 	return r, nil
+}
+
+func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
+	realmID := realmFromRequest(r)
+	category := chi.URLParam(r, "category")
+
+	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// realmList, err := s.app.Realms.FindAll()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+
+	noteList, err := s.app.Notes.FindAllInRealmByCategory(realmID, category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(noteList)
+
+	h.HTML(
+		h.Head(
+			h.StyleEl(g.Raw(styles)),
+		),
+		h.Body(
+			h.Div(
+				header(category, categoryCounts),
+				notes(noteList),
+			),
+		),
+	).Render(w)
+}
+
+func header(category string, categoryCounts []note.CategoryCount) g.Node {
+	return h.Div(h.Style("background: lime; padding: 5px; display: flex; gap: 5px"),
+		h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
+		h.Div(h.Style("display: flex; gap: 5px"),
+			g.Map(categoryCounts, func(cc note.CategoryCount) g.Node {
+				text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
+				if cc.Category == category {
+					return h.Div(h.A(h.Style("background: white"), g.Text(text), h.Href("/dsnotes/"+cc.Category)))
+				} else {
+					return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+cc.Category)))
+				}
+			})))
+}
+
+func notes(noteList []note.Note) g.Node {
+	var counter int
+
+	return h.Table(
+		// g.Attr("cellpadding", "0"),
+		// g.Attr("cellspacing", "0"),
+		//g.Attr("border", "0"),
+		h.Style("line-height: .5em"),
+		h.TBody(
+			g.Map(noteList, func(note note.Note) g.Node {
+				counter += 1
+				return g.Group{
+					h.Tr(
+						h.Td(g.Text(fmt.Sprintf("%d. ", counter))),
+						h.Td(g.Text(note.Text)),
+					),
+					h.Tr(h.Style("color: gray; font-size: 70%;"),
+						h.Td(h.ColSpan("1")),
+						h.Td(g.Attr("valign", "top"), g.Text(ago(note.Ts))),
+					),
+					h.Tr(h.Style("height: 5px")),
+				}
+			}),
+		))
+}
+
+func ago(ts time.Time) string {
+	return durafmt.Parse(time.Since(ts)).LimitFirstN(1).String() + " ago"
 }
