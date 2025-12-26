@@ -13,8 +13,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/hako/durafmt"
 	"github.com/rcy/whatever/app"
+	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/projections/note"
 	"github.com/rcy/whatever/projections/realm"
+	"github.com/starfederation/datastar-go/datastar"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	g "maragu.dev/gomponents"
@@ -91,6 +93,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		})
 
 		r.Get("/dsnotes/{category}", svc.notesIndex)
+		r.Post("/dsnotes", svc.postNotesHandler2)
 
 		r.Route("/notes", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +114,46 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	})
 
 	return r, nil
+}
+
+func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
+	realmID := realmFromRequest(r)
+
+	var signals struct {
+		Body     string `json:"body"`
+		Category string `json:"category"`
+	}
+
+	err := datastar.ReadSignals(r, &signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if signals.Body != "" {
+		err := s.app.Commander.Send(commands.CreateNote{NoteID: uuid.New(), RealmID: realmID, Text: signals.Body})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	sse := datastar.NewSSE(w, r)
+	signals.Body = ""
+	sse.MarshalAndPatchSignals(signals)
+
+	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sse.PatchElementGostar(header(realmID, realmList, signals.Category, categoryCounts))
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
@@ -138,21 +181,35 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 
 	h.HTML(
 		h.Head(
+			h.Script(h.Type("module"), h.Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js")),
 			h.StyleEl(g.Raw(styles)),
 		),
 		h.Body(
+			h.Div(g.Attr("data-signals", fmt.Sprintf("{category: '%s'}", category))),
 			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
 				h.Div(header(realmID, realmList, category, categoryCounts)),
+				h.Div(input()),
 				h.Div(notes(noteList)),
 			),
 		),
 	).Render(w)
 }
 
+func input() g.Node {
+	return h.Form(h.ID("input-form"), g.Attr("data-on:submit", "@post('/dsnotes')"),
+		h.Input(
+			g.Attr("data-bind", "body"),
+			h.Style("width:100%"),
+			h.Placeholder("add a note..."),
+			h.AutoFocus(),
+		),
+	)
+}
+
 func header(realmID uuid.UUID, realmList []realm.Realm, category string, categoryCounts []note.CategoryCount) g.Node {
-	return h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
+	return h.Div(h.ID("header"), h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
 		h.Div(h.Style("display:flex; gap:5px"),
-			h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
+			h.Div(h.ID("foobar"), h.Style("font-weight: bold"), g.Text("Not Now")),
 			h.Div(h.Style("display: flex; gap: 5px"),
 				g.Map(categoryCounts, func(cc note.CategoryCount) g.Node {
 					text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
