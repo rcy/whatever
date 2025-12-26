@@ -190,7 +190,7 @@ func notes(noteList []note.Note) g.Node {
 				return g.Group{
 					h.Tr(
 						h.Td(g.Text(fmt.Sprintf("%d. ", counter))),
-						h.Td(g.Text(note.Text)),
+						h.Td(linkifyNode(note.Status+" "+note.Text)),
 					),
 					h.Tr(h.Style("color: gray; font-size: 70%;"),
 						h.Td(h.ColSpan("1")),
