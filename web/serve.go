@@ -183,20 +183,19 @@ func notes(noteList []note.Note) g.Node {
 		// g.Attr("cellpadding", "0"),
 		// g.Attr("cellspacing", "0"),
 		//g.Attr("border", "0"),
-		h.Style("line-height: .5em"),
 		h.TBody(
 			g.Map(noteList, func(note note.Note) g.Node {
 				counter += 1
 				return g.Group{
 					h.Tr(
-						h.Td(g.Text(fmt.Sprintf("%d. ", counter))),
+						h.Td(g.Attr("valign", "top"), g.Text(fmt.Sprintf("%d. ", counter))),
 						h.Td(linkifyNode(note.Status+" "+note.Text)),
 					),
-					h.Tr(h.Style("color: gray; font-size: 70%;"),
+					h.Tr(h.Style("color: gray; font-size: 80%; line-height:.5em"),
 						h.Td(h.ColSpan("1")),
 						h.Td(g.Attr("valign", "top"), g.Text(ago(note.Ts))),
 					),
-					h.Tr(h.Style("height: 5px")),
+					h.Tr(h.Style("height: 10px")),
 				}
 			}),
 		))
