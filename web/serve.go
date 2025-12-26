@@ -10,9 +10,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 	"github.com/hako/durafmt"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/projections/note"
+	"github.com/rcy/whatever/projections/realm"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	g "maragu.dev/gomponents"
@@ -121,11 +123,11 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// realmList, err := s.app.Realms.FindAll()
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	noteList, err := s.app.Notes.FindAllInRealmByCategory(realmID, category)
 	if err != nil {
@@ -140,25 +142,38 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 		),
 		h.Body(
 			h.Div(
-				header(category, categoryCounts),
+				header(realmID, realmList, category, categoryCounts),
 				notes(noteList),
 			),
 		),
 	).Render(w)
 }
 
-func header(category string, categoryCounts []note.CategoryCount) g.Node {
-	return h.Div(h.Style("background: lime; padding: 5px; display: flex; gap: 5px"),
-		h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
-		h.Div(h.Style("display: flex; gap: 5px"),
-			g.Map(categoryCounts, func(cc note.CategoryCount) g.Node {
-				text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
-				if cc.Category == category {
-					return h.Div(h.A(h.Style("background: white"), g.Text(text), h.Href("/dsnotes/"+cc.Category)))
-				} else {
-					return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+cc.Category)))
-				}
-			})))
+func header(realmID uuid.UUID, realmList []realm.Realm, category string, categoryCounts []note.CategoryCount) g.Node {
+	return h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
+		h.Div(h.Style("display:flex; gap:5px"),
+			h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
+			h.Div(h.Style("display: flex; gap: 5px"),
+				g.Map(categoryCounts, func(cc note.CategoryCount) g.Node {
+					text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
+					if cc.Category == category {
+						return h.Div(h.A(h.Style("background: white"), g.Text(text), h.Href("/dsnotes/"+cc.Category)))
+					} else {
+						return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+cc.Category)))
+					}
+				})),
+		),
+		h.Div(
+			h.Select(g.Attr("hx-post", "/realm"), h.Name("realm"),
+				g.Map(realmList, func(realm realm.Realm) g.Node {
+					return h.Option(
+						h.Value(realm.ID.String()),
+						g.Text(realm.Name),
+						g.If(realmID == realm.ID, h.Selected()),
+					)
+				})),
+		),
+	)
 }
 
 func notes(noteList []note.Note) g.Node {
