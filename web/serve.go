@@ -141,9 +141,9 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 			h.StyleEl(g.Raw(styles)),
 		),
 		h.Body(
-			h.Div(
-				header(realmID, realmList, category, categoryCounts),
-				notes(noteList),
+			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
+				h.Div(header(realmID, realmList, category, categoryCounts)),
+				h.Div(notes(noteList)),
 			),
 		),
 	).Render(w)
