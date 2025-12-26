@@ -139,6 +139,15 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse := datastar.NewSSE(w, r)
+
+	// if we are looking at the inbox, reload the page to immediately show the item that was added to the inbox
+	if signals.Category == "inbox" {
+		sse.Redirect("")
+		return
+	}
+
+	// ...otherwise, patch up the ui
+
 	signals.Body = ""
 	sse.MarshalAndPatchSignals(signals)
 
