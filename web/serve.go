@@ -81,7 +81,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Use(svc.authMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/dsnotes", http.StatusSeeOther)
+			http.Redirect(w, r, "/dsnotes/inbox", http.StatusSeeOther)
 		})
 
 		r.Get("/deleted_notes", svc.deletedNotesHandler)
