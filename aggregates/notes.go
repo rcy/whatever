@@ -43,12 +43,25 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("realm cannot be empty")
 		}
 
-		return []evoke.Event{events.NoteCreated{
-			NoteID:    aggregateID,
-			CreatedAt: time.Now(),
-			RealmID:   c.RealmID,
-			Text:      text,
-		}}, nil
+		eventList := []evoke.Event{
+			events.NoteCreated{
+				NoteID:    aggregateID,
+				CreatedAt: time.Now(),
+				RealmID:   c.RealmID,
+				Text:      text,
+			},
+		}
+
+		// TODO: better matching here
+		if strings.HasPrefix(text, "http") {
+			eventList = append(eventList, events.NoteEnrichmentRequested{
+				NoteID:      aggregateID,
+				RequestedAt: time.Now(),
+				Text:        text,
+			})
+		}
+
+		return eventList, nil
 	case commands.DeleteNote:
 		if a.deleted {
 			return nil, fmt.Errorf("note already deleted")
@@ -69,10 +82,21 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("text cannot be empty")
 		}
 
-		return []evoke.Event{events.NoteTextUpdated{
+		eventList := []evoke.Event{events.NoteTextUpdated{
 			NoteID: aggregateID,
 			Text:   c.Text,
-		}}, nil
+		}}
+
+		// TODO: better matching here
+		if strings.HasPrefix(text, "http") {
+			eventList = append(eventList, events.NoteEnrichmentRequested{
+				NoteID:      aggregateID,
+				RequestedAt: time.Now(),
+				Text:        text,
+			})
+		}
+
+		return eventList, nil
 	case commands.SetNoteCategory:
 		category := strings.TrimSpace(c.Category)
 
@@ -80,7 +104,17 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			NoteID:   aggregateID,
 			Category: category,
 		}}, nil
+	case commands.CompleteNoteEnrichment:
+		return []evoke.Event{events.NoteEnriched{
+			NoteID: aggregateID,
+			Title:  c.Title,
+		}}, nil
+	case commands.FailNoteEnrichment:
+		return []evoke.Event{events.NoteEnrichmentFailed{
+			NoteID: aggregateID,
+		}}, nil
 	}
+
 	return nil, fmt.Errorf("unhandled")
 }
 
@@ -97,6 +131,9 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 		a.text = evt.Text
 	case events.NoteCategoryChanged:
 		a.category = evt.Category
+	case events.NoteEnrichmentRequested:
+	case events.NoteEnriched:
+	case events.NoteEnrichmentFailed:
 	default:
 		return fmt.Errorf("not handled")
 	}

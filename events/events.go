@@ -23,6 +23,12 @@ type NoteCreated struct {
 	Text      string
 }
 
+type NoteEnrichmentRequested struct {
+	NoteID      uuid.UUID
+	RequestedAt time.Time
+	Text        string
+}
+
 type NoteTextUpdated struct {
 	NoteID uuid.UUID
 	Text   string
@@ -54,5 +60,14 @@ type NoteTaskDeferred struct {
 }
 
 type NoteTaskReopened struct {
+	NoteID uuid.UUID
+}
+
+type NoteEnriched struct {
+	NoteID uuid.UUID
+	Title  string
+}
+
+type NoteEnrichmentFailed struct {
 	NoteID uuid.UUID
 }

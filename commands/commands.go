@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -57,3 +59,19 @@ type SetNoteCategory struct {
 }
 
 func (c SetNoteCategory) AggregateID() uuid.UUID { return c.NoteID }
+
+type CompleteNoteEnrichment struct {
+	NoteID      uuid.UUID
+	CompletedAt time.Time
+	Title       string
+	Thumb       string
+}
+
+func (c CompleteNoteEnrichment) AggregateID() uuid.UUID { return c.NoteID }
+
+type FailNoteEnrichment struct {
+	NoteID   uuid.UUID
+	FailedAt time.Time
+}
+
+func (c FailNoteEnrichment) AggregateID() uuid.UUID { return c.NoteID }
