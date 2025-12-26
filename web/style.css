@@ -1,18 +1,3 @@
 a {
     text-decoration: none;
 }
-
-tr.htmx-swapping {
-    opacity: 0;
-    transform: scaleY(0);
-    transform: translateX(100px);
-    transition: opacity 1s, transform 1s;
-}
-
-table tr:hover {
-    filter: brightness(1.5);
-}
-
-table tr:hover:nth-child(odd) {
-    filter: brightness(1.5);
-}
