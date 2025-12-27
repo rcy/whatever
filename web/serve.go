@@ -243,21 +243,20 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, categor
 }
 
 func notes(noteList []note.Note) g.Node {
-	var counter int
-
 	return h.Table(
 		// g.Attr("cellpadding", "0"),
 		// g.Attr("cellspacing", "0"),
-		//g.Attr("border", "0"),
+		//g.Attr("border", "1"),
 		h.TBody(
 			g.Map(noteList, func(note note.Note) g.Node {
-				counter += 1
 				return g.Group{
 					h.Tr(
-						h.Td(g.Attr("valign", "top"), g.Text(fmt.Sprintf("%d. ", counter))),
+						h.Td(g.Attr("valign", "top"),
+							g.Raw("&middot;"),
+						),
 						h.Td(linkifyNode(note.Status+" "+note.Text)),
 					),
-					h.Tr(h.Style("color: gray; font-size: 80%; line-height:.5em"),
+					h.Tr(h.Style("color: gray; font-size: 90%"),
 						h.Td(h.ColSpan("1")),
 						h.Td(g.Attr("valign", "top"), g.Text(ago(note.Ts))),
 					),
