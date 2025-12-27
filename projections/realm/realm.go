@@ -25,7 +25,7 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table realms(id not null unique, ts timestamp not null, name not null unique)`)
+	_, err = db.Exec(`create table realms(id not null unique, ts timestamp not null, name not null)`)
 	if err != nil {
 		return nil, err
 	}
