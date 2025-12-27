@@ -93,6 +93,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Get("/dsnotes/{category}", svc.notesIndex)
 		r.Post("/dsnotes", svc.postNotesHandler2)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
+		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
 
 		r.Route("/notes", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -168,11 +169,11 @@ func (s *webservice) header(r *http.Request, signals signals) (g.Node, error) {
 
 	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Notes.CategoryCounts: %w", err)
 	}
 	realmList, err := s.app.Realms.FindAll()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Realms.FindAll: %w", err)
 	}
 
 	return header(realmID, realmList, signals.ViewCategory, categoryCounts), nil
@@ -255,7 +256,48 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	noteEl := noteEl(note)
-	fmt.Println("DEBUGX Twfq 1", noteEl)
+
+	sse.PatchElementGostar(noteEl)
+}
+
+func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "noteID")
+	subcategory := chi.URLParam(r, "subcategory")
+
+	var signals signals
+	err := datastar.ReadSignals(r, &signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+
+	noteID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.app.Commander.Send(commands.SetNoteSubcategory{NoteID: noteID, Subcategory: subcategory})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	headerEl, err := s.header(r, signals)
+	if err != nil {
+		sse.ConsoleError(err)
+		return
+	}
+	sse.PatchElementGostar(headerEl)
+
+	note, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		sse.ConsoleError(err)
+		return
+	}
+	noteEl := noteEl(note)
 
 	sse.PatchElementGostar(noteEl)
 }
@@ -315,10 +357,10 @@ func noteEl(note note.Note) g.Node {
 		h.Div(linkifyNode(note.Status+" "+note.Text)),
 		h.Div(h.Style("color: gray; font-size: 70%; line-height:.5em"),
 			h.Div(h.Style("display:flex; gap:2px"),
-				h.Div(g.Text(note.Category)),
-				h.Div(g.Text(ago(note.Ts))),
-				h.Div(g.Text("|")),
+				h.Div(g.Text(note.Category+":")),
 				refile(note),
+				h.Div(g.Text("|")),
+				h.Div(g.Text(ago(note.Ts))),
 			),
 		),
 	)
@@ -327,10 +369,28 @@ func noteEl(note note.Note) g.Node {
 func refile(note note.Note) g.Node {
 	if note.Category == "inbox" {
 		return h.Div(h.Style("display:flex; gap:2px"),
-			g.Text("move to: "),
+			//g.Text("move to: "),
 			g.Map(categories, func(newCategory string) g.Node {
 				return refileButton(note.ID, newCategory, newCategory)
 			}))
+	}
+
+	if note.Category == "task" {
+		return h.Div(h.Style("display:flex; gap:2px"),
+			g.If(note.Subcategory == "done",
+				g.Group{
+					h.Div(g.Text("DONE!!!")),
+					subfileButton(note.ID, "x", "undo"),
+				},
+			),
+			g.If(note.Subcategory != "done",
+				g.Group{
+					g.Map([]string{"start", "notnow", "done"}, func(subCategory string) g.Node {
+						return subfileButton(note.ID, subCategory, subCategory)
+					}),
+					refileButton(note.ID, "inbox", "refile"),
+				},
+			))
 	}
 
 	return refileButton(note.ID, "inbox", "refile")
@@ -338,5 +398,10 @@ func refile(note note.Note) g.Node {
 
 func refileButton(noteID uuid.UUID, category string, label string) g.Node {
 	url := fmt.Sprintf("/refile/%s/%s", noteID, category)
+	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(label))
+}
+
+func subfileButton(noteID uuid.UUID, category string, label string) g.Node {
+	url := fmt.Sprintf("/subfile/%s/%s", noteID, category)
 	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(label))
 }

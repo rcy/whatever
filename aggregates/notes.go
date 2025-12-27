@@ -12,10 +12,11 @@ import (
 )
 
 type noteAggregate struct {
-	id       uuid.UUID
-	deleted  bool
-	text     string
-	category string
+	id          uuid.UUID
+	deleted     bool
+	text        string
+	category    string
+	subcategory string
 }
 
 func NewNoteAggregate(id uuid.UUID) *noteAggregate {
@@ -99,10 +100,24 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 		return eventList, nil
 	case commands.SetNoteCategory:
 		category := strings.TrimSpace(c.Category)
+		if a.category == category {
+			return nil, fmt.Errorf("note already set to category: %s", category)
+		}
 
-		return []evoke.Event{events.NoteCategoryChanged{
-			NoteID:   aggregateID,
-			Category: category,
+		return []evoke.Event{
+			events.NoteCategoryChanged{
+				NoteID:   aggregateID,
+				Category: category,
+			},
+		}, nil
+	case commands.SetNoteSubcategory:
+		subcategory := strings.TrimSpace(c.Subcategory)
+		if a.subcategory == subcategory {
+			return nil, fmt.Errorf("note already set to subcategory: %s", subcategory)
+		}
+		return []evoke.Event{events.NoteSubcategoryChanged{
+			NoteID:      aggregateID,
+			Subcategory: subcategory,
 		}}, nil
 	case commands.CompleteNoteEnrichment:
 		return []evoke.Event{events.NoteEnriched{
@@ -131,6 +146,8 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 		a.text = evt.Text
 	case events.NoteCategoryChanged:
 		a.category = evt.Category
+	case events.NoteSubcategoryChanged:
+		a.subcategory = evt.Subcategory
 	case events.NoteEnrichmentRequested:
 	case events.NoteEnriched:
 	case events.NoteEnrichmentFailed:
