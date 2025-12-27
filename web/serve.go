@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
-	"github.com/hako/durafmt"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/projections/note"
@@ -94,6 +92,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 		r.Get("/dsnotes/{category}", svc.notesIndex)
 		r.Post("/dsnotes", svc.postNotesHandler2)
+		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
 
 		r.Route("/notes", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -116,14 +115,15 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	return r, nil
 }
 
+type signals struct {
+	Body         string `json:"body"`
+	ViewCategory string `json:"viewCategory"`
+}
+
 func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 
-	var signals struct {
-		Body     string `json:"body"`
-		Category string `json:"category"`
-	}
-
+	var signals signals
 	err := datastar.ReadSignals(r, &signals)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -141,7 +141,7 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	sse := datastar.NewSSE(w, r)
 
 	// if we are looking at the inbox, reload the page to immediately show the item that was added to the inbox
-	if signals.Category == "inbox" {
+	if signals.ViewCategory == "inbox" {
 		sse.Redirect("")
 		return
 	}
@@ -151,18 +151,31 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	signals.Body = ""
 	sse.MarshalAndPatchSignals(signals)
 
-	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	headerEl, err := s.header(r, signals)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	realmList, err := s.app.Realms.FindAll()
-	if err != nil {
+		fmt.Println("DEBUGX onAk 0", err)
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	sse.PatchElementGostar(header(realmID, realmList, signals.Category, categoryCounts))
+	fmt.Println("headerEl", headerEl)
+	sse.PatchElementGostar(headerEl)
+}
+
+func (s *webservice) header(r *http.Request, signals signals) (g.Node, error) {
+	realmID := realmFromRequest(r)
+
+	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	if err != nil {
+		return nil, err
+	}
+	realmList, err := s.app.Realms.FindAll()
+	if err != nil {
+		return nil, err
+	}
+
+	return header(realmID, realmList, signals.ViewCategory, categoryCounts), nil
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +207,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 			h.StyleEl(g.Raw(styles)),
 		),
 		h.Body(
-			h.Div(g.Attr("data-signals", fmt.Sprintf("{category: '%s'}", category))),
+			h.Div(g.Attr("data-signals", fmt.Sprintf("{viewCategory: '%s'}", category))),
 			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
 				h.Div(header(realmID, realmList, category, categoryCounts)),
 				h.Div(input()),
@@ -204,8 +217,51 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	).Render(w)
 }
 
+func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "noteID")
+	category := chi.URLParam(r, "category")
+
+	var signals signals
+	err := datastar.ReadSignals(r, &signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	noteID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.app.Commander.Send(commands.SetNoteCategory{NoteID: noteID, Category: category})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+
+	headerEl, err := s.header(r, signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	sse.PatchElementGostar(headerEl)
+
+	note, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	noteEl := noteEl(note)
+	fmt.Println("DEBUGX Twfq 1", noteEl)
+
+	sse.PatchElementGostar(noteEl)
+}
+
 func input() g.Node {
-	return h.Form(h.ID("input-form"), g.Attr("data-on:submit", "@post('/dsnotes')"),
+	return h.Form(h.ID("input-form"), g.Attr("data-on:submit", "@post('/dsnotes')"), h.Style("margin:0"),
 		h.Input(
 			g.Attr("data-bind", "body"),
 			h.Style("width:100%"),
@@ -243,29 +299,44 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, categor
 }
 
 func notes(noteList []note.Note) g.Node {
-	return h.Table(
-		// g.Attr("cellpadding", "0"),
-		// g.Attr("cellspacing", "0"),
-		//g.Attr("border", "1"),
-		h.TBody(
-			g.Map(noteList, func(note note.Note) g.Node {
-				return g.Group{
-					h.Tr(
-						h.Td(g.Attr("valign", "top"),
-							g.Raw("&middot;"),
-						),
-						h.Td(linkifyNode(note.Status+" "+note.Text)),
-					),
-					h.Tr(h.Style("color: gray; font-size: 90%"),
-						h.Td(h.ColSpan("1")),
-						h.Td(g.Attr("valign", "top"), g.Text(ago(note.Ts))),
-					),
-					h.Tr(h.Style("height: 10px")),
-				}
-			}),
-		))
+	return h.Div(h.Style("display:flex; flex-direction:column; gap:10px"),
+		g.Map(noteList, func(note note.Note) g.Node {
+			return noteEl(note)
+		}),
+	)
 }
 
-func ago(ts time.Time) string {
-	return durafmt.Parse(time.Since(ts)).LimitFirstN(1).String() + " ago"
+func noteID(note note.Note) string {
+	return fmt.Sprintf("note-%s", note.ID)
+}
+
+func noteEl(note note.Note) g.Node {
+	return h.Div(h.ID(noteID(note)),
+		h.Div(linkifyNode(note.Status+" "+note.Text)),
+		h.Div(h.Style("color: gray; font-size: 70%; line-height:.5em"),
+			h.Div(h.Style("display:flex; gap:2px"),
+				h.Div(g.Text(note.Category)),
+				h.Div(g.Text(ago(note.Ts))),
+				h.Div(g.Text("|")),
+				refile(note),
+			),
+		),
+	)
+}
+
+func refile(note note.Note) g.Node {
+	if note.Category == "inbox" {
+		return h.Div(h.Style("display:flex; gap:2px"),
+			g.Text("move to: "),
+			g.Map(categories, func(newCategory string) g.Node {
+				return refileButton(note.ID, newCategory, newCategory)
+			}))
+	}
+
+	return refileButton(note.ID, "inbox", "refile")
+}
+
+func refileButton(noteID uuid.UUID, category string, label string) g.Node {
+	url := fmt.Sprintf("/refile/%s/%s", noteID, category)
+	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(label))
 }

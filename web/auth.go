@@ -61,7 +61,7 @@ func (s *sessionManager) issue(w http.ResponseWriter, r *http.Request, user user
 		Email:     user.Email,
 		Name:      user.Name,
 		Picture:   user.Picture,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
 	token, err := s.sign(payload)
 	if err != nil {
