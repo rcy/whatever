@@ -37,6 +37,7 @@ func New(filename string) (*App, error) {
 	evoke.RegisterEvent(eventStore, &events.NoteUndeleted{})
 	evoke.RegisterEvent(eventStore, &events.NoteTextUpdated{})
 	evoke.RegisterEvent(eventStore, &events.NoteCategoryChanged{})
+	evoke.RegisterEvent(eventStore, &events.NoteSubcategoryChanged{})
 	evoke.RegisterEvent(eventStore, &events.NoteEnriched{})
 	evoke.RegisterEvent(eventStore, &events.NoteEnrichmentFailed{})
 
@@ -52,6 +53,7 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.UndeleteNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.UpdateNoteText{}, noteHandler)
 	commandBus.RegisterHandler(commands.SetNoteCategory{}, noteHandler)
+	commandBus.RegisterHandler(commands.SetNoteSubcategory{}, noteHandler)
 	commandBus.RegisterHandler(commands.CompleteNoteEnrichment{}, noteHandler)
 	commandBus.RegisterHandler(commands.FailNoteEnrichment{}, noteHandler)
 
@@ -73,6 +75,7 @@ func New(filename string) (*App, error) {
 	eventBus.Subscribe(events.NoteUndeleted{}, noteProjection)
 	eventBus.Subscribe(events.NoteTextUpdated{}, noteProjection)
 	eventBus.Subscribe(events.NoteCategoryChanged{}, noteProjection)
+	eventBus.Subscribe(events.NoteSubcategoryChanged{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnrichmentRequested{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnriched{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnrichmentFailed{}, noteProjection)
