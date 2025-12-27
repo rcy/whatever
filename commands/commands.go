@@ -60,6 +60,13 @@ type SetNoteCategory struct {
 
 func (c SetNoteCategory) AggregateID() uuid.UUID { return c.NoteID }
 
+type SetNoteSubcategory struct {
+	NoteID      uuid.UUID
+	Subcategory string
+}
+
+func (c SetNoteSubcategory) AggregateID() uuid.UUID { return c.NoteID }
+
 type CompleteNoteEnrichment struct {
 	NoteID      uuid.UUID
 	CompletedAt time.Time
