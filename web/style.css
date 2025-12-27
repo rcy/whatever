@@ -16,7 +16,7 @@ button.link {
     cursor: pointer;
 }
 
-button.link:hover {
+button.link:hover, a:hover {
        text-decoration: underline;
 }
 
