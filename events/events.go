@@ -47,6 +47,11 @@ type NoteCategoryChanged struct {
 	Category string
 }
 
+type NoteSubcategoryChanged struct {
+	NoteID      uuid.UUID
+	Subcategory string
+}
+
 type NoteRealmChanged struct {
 	RealmID string
 }
