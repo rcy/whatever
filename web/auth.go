@@ -278,26 +278,22 @@ func (s *webservice) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentRealmID := realmFromRequest(r)
-	realmList, err := s.app.Realms.FindAll()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	authURL := s.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 
-	page(currentRealmID, realmList,
-		h.Section(
-			h.H2(g.Text("Sign in")),
-			h.P(g.Text("Continue with Google to access whatever.")),
-			h.A(
-				h.Class("contrast"),
-				h.Href(authURL),
-				g.Text("Login with Google"),
+	h.HTML(h.Lang("en"),
+		h.Head(
+			h.TitleEl(g.Text("Whatever NotNow")),
+			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
+			h.Section(
+				h.H2(g.Text("Sign in")),
+				h.P(g.Text("Continue with Google to access whatever.")),
+				h.A(
+					h.Class("contrast"),
+					h.Href(authURL),
+					g.Text("Login with Google"),
+				),
 			),
-		),
-	).Render(w)
+		)).Render(w)
 }
 
 func (s *webservice) authCallbackHandler(w http.ResponseWriter, r *http.Request) {
