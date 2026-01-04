@@ -153,3 +153,17 @@ func (p *Projection) CategoryCounts(realmID uuid.UUID) ([]CategoryCount, error) 
 	}
 	return categories, nil
 }
+
+type SubcategoryCount struct {
+	Subcategory string
+	Count       int `db:"count"`
+}
+
+func (p *Projection) SubcategoryCounts(realmID uuid.UUID, category string) ([]SubcategoryCount, error) {
+	var categories []SubcategoryCount
+	err := p.db.Select(&categories, `select count(*) count, subcategory from notes where realm_id = ? and category = ? group by subcategory`, realmID, category)
+	if err != nil {
+		return nil, fmt.Errorf("select subcategories: %w", err)
+	}
+	return categories, nil
+}

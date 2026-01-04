@@ -7,6 +7,10 @@ build:
 test:
 	go test ./...
 
+include .env
+sql:
+	sqlite3 ${EVOKE_FILE}
+
 release:
 	$(if $(TAG),,$(error TAG is not defined))
 	git diff-index --quiet HEAD -- # stop if tree is not clean

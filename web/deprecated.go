@@ -128,7 +128,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 						h.Td(h.Style("padding:0"),
 							g.If(category == "inbox",
 								h.Div(h.Style("display:flex; gap:5px"),
-									g.Map(categories,
+									g.Map(xcategories,
 										func(category string) g.Node {
 											return h.Button(
 												h.Style("padding:0 .5em"),
@@ -142,7 +142,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 				})))).Render(w)
 }
 
-var categories = []string{"task", "reminder", "idea", "reference", "observation"}
+var xcategories = []string{"task", "reminder", "idea", "reference", "observation"}
 
 func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -278,7 +278,7 @@ func noteNode(realmID uuid.UUID, realmList []realm.Realm, note note.Note, slot g
 	return h.Div(h.ID("hxnote"),
 		h.Div(h.Style("display:flex; align-items:baseline; justify-content:space-between"),
 			h.Div(h.Class("uwu"), h.Style("display:flex; gap:5px"),
-				g.Map(categories,
+				g.Map(xcategories,
 					func(category string) g.Node {
 						return h.Button(
 							g.If(category != note.Category, h.Class("outline")),

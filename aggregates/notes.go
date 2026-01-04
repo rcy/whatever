@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rcy/evoke"
+	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/events"
 )
@@ -99,15 +100,18 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 
 		return eventList, nil
 	case commands.SetNoteCategory:
-		category := strings.TrimSpace(c.Category)
-		if a.category == category {
-			return nil, fmt.Errorf("note already set to category: %s", category)
+		categoryName := strings.TrimSpace(c.Category)
+		if a.category == categoryName {
+			return nil, fmt.Errorf("note already set to category: %s", categoryName)
 		}
+
+		subcategory := notesmeta.Categories.Get(categoryName).DefaultSubcategory()
 
 		return []evoke.Event{
 			events.NoteCategoryChanged{
-				NoteID:   aggregateID,
-				Category: category,
+				NoteID:      aggregateID,
+				Category:    categoryName,
+				Subcategory: subcategory.Name,
 			},
 		}, nil
 	case commands.SetNoteSubcategory:
