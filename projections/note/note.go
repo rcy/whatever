@@ -12,13 +12,14 @@ import (
 )
 
 type Note struct {
-	ID       uuid.UUID `db:"id"`
-	Ts       time.Time `db:"ts"`
-	Text     string    `db:"text"`
-	Category string    `db:"category"`
-	RealmID  uuid.UUID `db:"realm_id"`
-	State    string    `db:"state"`
-	Status   string    `db:"status"`
+	ID          uuid.UUID `db:"id"`
+	Ts          time.Time `db:"ts"`
+	Text        string    `db:"text"`
+	Category    string    `db:"category"`
+	Subcategory string    `db:"subcategory"`
+	RealmID     uuid.UUID `db:"realm_id"`
+	State       string    `db:"state"`
+	Status      string    `db:"status"`
 }
 
 type Projection struct {
@@ -30,11 +31,11 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null unique, ts timestamp not null, text not null, category not null, realm_id not null, state not null, status not null)`)
+	_, err = db.Exec(`create table notes(id not null unique, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null unique, ts timestamp not null, text not null, category not null, realm_id not null, state not null, status not null)`)
+	_, err = db.Exec(`create table deleted_notes(id not null unique, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
@@ -47,13 +48,13 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 
 	switch e := evt.(type) {
 	case events.NoteCreated:
-		q := `insert into notes(id, ts, text, realm_id, category, state, status) values(?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, "inbox", "open", "")
+		q := `insert into notes(id, ts, text, realm_id, category, subcategory, state, status) values(?,?,?,?,?,?,?,?)`
+		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, "inbox", "", "open", "")
 		if err != nil {
 			return err
 		}
 	case events.NoteDeleted:
-		q := `insert into deleted_notes(id, ts, text, realm_id, category, state, status) select id, ts, text, realm_id, category, state, status from notes where id = ?`
+		q := `insert into deleted_notes(id, ts, text, realm_id, category, subcategory, state, status) select id, ts, text, realm_id, category, subcategory, state, status from notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -62,7 +63,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		_, err = p.db.Exec(`delete from notes where id = ?`, e.NoteID)
 		return err
 	case events.NoteUndeleted:
-		q := `insert into notes(id, ts, text, realm_id, category, state, status) select id, ts, text, realm_id, category, state, status from deleted_notes where id = ?`
+		q := `insert into notes(id, ts, text, realm_id, category, subcategory, state, status) select id, ts, text, realm_id, category, subcategory, state, status from deleted_notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -75,6 +76,9 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		return err
 	case events.NoteCategoryChanged:
 		_, err := p.db.Exec(`update notes set category = ? where id = ?`, e.Category, e.NoteID)
+		return err
+	case events.NoteSubcategoryChanged:
+		_, err := p.db.Exec(`update notes set subcategory = ? where id = ?`, e.Subcategory, e.NoteID)
 		return err
 	case events.NoteEnrichmentRequested:
 		_, err := p.db.Exec(`update notes set status = 'enriching' where id = ?`, e.NoteID)
@@ -146,6 +150,20 @@ func (p *Projection) CategoryCounts(realmID uuid.UUID) ([]CategoryCount, error) 
 	err := p.db.Select(&categories, `select count(*) count, category from notes where realm_id = ? group by category`, realmID)
 	if err != nil {
 		return nil, fmt.Errorf("select categories: %w", err)
+	}
+	return categories, nil
+}
+
+type SubcategoryCount struct {
+	Subcategory string
+	Count       int `db:"count"`
+}
+
+func (p *Projection) SubcategoryCounts(realmID uuid.UUID, category string) ([]SubcategoryCount, error) {
+	var categories []SubcategoryCount
+	err := p.db.Select(&categories, `select count(*) count, subcategory from notes where realm_id = ? and category = ? group by subcategory`, realmID, category)
+	if err != nil {
+		return nil, fmt.Errorf("select subcategories: %w", err)
 	}
 	return categories, nil
 }

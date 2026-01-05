@@ -43,8 +43,14 @@ type NoteUndeleted struct {
 }
 
 type NoteCategoryChanged struct {
-	NoteID   uuid.UUID
-	Category string
+	NoteID      uuid.UUID
+	Category    string
+	Subcategory string
+}
+
+type NoteSubcategoryChanged struct {
+	NoteID      uuid.UUID
+	Subcategory string
 }
 
 type NoteRealmChanged struct {

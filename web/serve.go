@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/rcy/whatever/app"
+	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/projections/note"
 	"github.com/rcy/whatever/projections/realm"
@@ -93,6 +94,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Get("/dsnotes/{category}", svc.notesIndex)
 		r.Post("/dsnotes", svc.postNotesHandler2)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
+		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
 
 		r.Route("/notes", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +153,7 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	signals.Body = ""
 	sse.MarshalAndPatchSignals(signals)
 
-	headerEl, err := s.header(r, signals)
+	headerEl, err := s.header(r, signals.ViewCategory)
 	if err != nil {
 		fmt.Println("DEBUGX onAk 0", err)
 
@@ -163,36 +165,30 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	sse.PatchElementGostar(headerEl)
 }
 
-func (s *webservice) header(r *http.Request, signals signals) (g.Node, error) {
+// Wrap ui header element with data fetching
+func (s *webservice) header(r *http.Request, viewCategory string) (g.Node, error) {
 	realmID := realmFromRequest(r)
 
 	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Notes.CategoryCounts: %w", err)
 	}
 	realmList, err := s.app.Realms.FindAll()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Realms.FindAll: %w", err)
 	}
 
-	return header(realmID, realmList, signals.ViewCategory, categoryCounts), nil
+	subcategoryCounts, err := s.app.Notes.SubcategoryCounts(realmID, viewCategory)
+	if err != nil {
+		return nil, fmt.Errorf("Notes.SubcategoryCounts: %w", err)
+	}
+
+	return header(realmID, realmList, viewCategory, categoryCounts, subcategoryCounts), nil
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
-
-	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	realmList, err := s.app.Realms.FindAll()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
 	noteList, err := s.app.Notes.FindAllInRealmByCategory(realmID, category)
 	if err != nil {
@@ -201,6 +197,11 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
+	headerEl, err := s.header(r, category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	h.HTML(
 		h.Head(
 			h.Script(h.Type("module"), h.Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js")),
@@ -209,7 +210,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 		h.Body(
 			h.Div(g.Attr("data-signals", fmt.Sprintf("{viewCategory: '%s'}", category))),
 			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
-				h.Div(header(realmID, realmList, category, categoryCounts)),
+				h.Div(headerEl),
 				h.Div(input()),
 				h.Div(notes(noteList)),
 			),
@@ -219,7 +220,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "noteID")
-	category := chi.URLParam(r, "category")
+	categoryName := chi.URLParam(r, "category")
 
 	var signals signals
 	err := datastar.ReadSignals(r, &signals)
@@ -234,7 +235,7 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.app.Commander.Send(commands.SetNoteCategory{NoteID: noteID, Category: category})
+	err = s.app.Commander.Send(commands.SetNoteCategory{NoteID: noteID, Category: categoryName})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -242,20 +243,61 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 
-	headerEl, err := s.header(r, signals)
+	headerEl, err := s.header(r, signals.ViewCategory)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sse.ConsoleError(err)
 		return
 	}
 	sse.PatchElementGostar(headerEl)
 
 	note, err := s.app.Notes.FindOne(noteID.String())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sse.ConsoleError(err)
 		return
 	}
 	noteEl := noteEl(note)
-	fmt.Println("DEBUGX Twfq 1", noteEl)
+
+	sse.PatchElementGostar(noteEl)
+}
+
+func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "noteID")
+	subcategory := chi.URLParam(r, "subcategory")
+
+	var signals signals
+	err := datastar.ReadSignals(r, &signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+
+	noteID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.app.Commander.Send(commands.SetNoteSubcategory{NoteID: noteID, Subcategory: subcategory})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	headerEl, err := s.header(r, signals.ViewCategory)
+	if err != nil {
+		sse.ConsoleError(err)
+		return
+	}
+	sse.PatchElementGostar(headerEl)
+
+	note, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		sse.ConsoleError(err)
+		return
+	}
+	noteEl := noteEl(note)
 
 	sse.PatchElementGostar(noteEl)
 }
@@ -271,29 +313,41 @@ func input() g.Node {
 	)
 }
 
-func header(realmID uuid.UUID, realmList []realm.Realm, category string, categoryCounts []note.CategoryCount) g.Node {
-	return h.Div(h.ID("header"), h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
-		h.Div(h.Style("display:flex; gap:5px"),
-			h.Div(h.ID("foobar"), h.Style("font-weight: bold"), g.Text("Not Now")),
-			h.Div(h.Style("display: flex; gap: 5px"),
-				g.Map(categoryCounts, func(cc note.CategoryCount) g.Node {
-					text := fmt.Sprintf("%s %d", g.Text(cc.Category), cc.Count)
-					if cc.Category == category {
-						return h.Div(h.A(h.Style("background: white"), g.Text(text), h.Href("/dsnotes/"+cc.Category)))
-					} else {
-						return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+cc.Category)))
-					}
-				})),
-		),
-		h.Div(
-			h.Select(g.Attr("hx-post", "/realm"), h.Name("realm"),
-				g.Map(realmList, func(realm realm.Realm) g.Node {
-					return h.Option(
-						h.Value(realm.ID.String()),
-						g.Text(realm.Name),
-						g.If(realmID == realm.ID, h.Selected()),
-					)
-				})),
+func header(realmID uuid.UUID, realmList []realm.Realm, category string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
+	return h.Div(h.ID("header"),
+		h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
+			h.Div(h.Style("display:flex; gap:5px"),
+				h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
+				h.Div(h.Style("display: flex; gap: 5px"),
+					g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
+						text := fmt.Sprintf("[%s]", c.Name)
+						if c.Name == category {
+							return h.Div(
+								h.A(h.Style("font-weight: bold"),
+									g.Text(text),
+									h.Href("/dsnotes/"+c.Name)))
+						} else {
+							return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+c.Name)))
+						}
+					}))),
+			h.Div(
+				h.Select(g.Attr("hx-post", "/realm"), h.Name("realm"),
+					g.Map(realmList, func(realm realm.Realm) g.Node {
+						return h.Option(
+							h.Value(realm.ID.String()),
+							g.Text(realm.Name),
+							g.If(realmID == realm.ID, h.Selected()),
+						)
+					})),
+			)),
+
+		h.Div(h.ID("header"), h.Style("background: pink; padding: 5px; display:flex; justify-content:space-between"),
+			h.Div(h.Style("display:flex; gap:5px"),
+				h.Div(h.Style("display: flex; gap: 5px"),
+					g.Map(notesmeta.Categories.Get(category).Subcategories, func(s notesmeta.Subcategory) g.Node {
+						text := fmt.Sprintf("[%s]", g.Text(s.Name))
+						return h.Div(h.A(g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
+					}))),
 		),
 	)
 }
@@ -315,10 +369,10 @@ func noteEl(note note.Note) g.Node {
 		h.Div(linkifyNode(note.Status+" "+note.Text)),
 		h.Div(h.Style("color: gray; font-size: 70%; line-height:.5em"),
 			h.Div(h.Style("display:flex; gap:2px"),
-				h.Div(g.Text(note.Category)),
-				h.Div(g.Text(ago(note.Ts))),
-				h.Div(g.Text("|")),
+				h.Div(g.Text(note.Category+":")),
 				refile(note),
+				h.Div(g.Text("|")),
+				h.Div(g.Text(ago(note.Ts))),
 			),
 		),
 	)
@@ -327,16 +381,33 @@ func noteEl(note note.Note) g.Node {
 func refile(note note.Note) g.Node {
 	if note.Category == "inbox" {
 		return h.Div(h.Style("display:flex; gap:2px"),
-			g.Text("move to: "),
-			g.Map(categories, func(newCategory string) g.Node {
-				return refileButton(note.ID, newCategory, newCategory)
+			g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
+				if c.Name == "inbox" {
+					return nil
+				}
+				return refileButton(note.ID, c.Name, c.Name)
 			}))
 	}
 
-	return refileButton(note.ID, "inbox", "refile")
+	return h.Div(h.Style("display:flex; gap:2px"),
+		g.Group{
+			g.Map(notesmeta.Categories.Get(note.Category).Subcategories.Get(note.Subcategory).Transitions,
+				func(t notesmeta.Transition) g.Node {
+					return subfileButton(note.ID, t)
+				},
+			),
+			g.Text(" | "),
+			refileButton(note.ID, "inbox", "refile"),
+		},
+	)
 }
 
 func refileButton(noteID uuid.UUID, category string, label string) g.Node {
 	url := fmt.Sprintf("/refile/%s/%s", noteID, category)
 	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(label))
+}
+
+func subfileButton(noteID uuid.UUID, t notesmeta.Transition) g.Node {
+	url := fmt.Sprintf("/subfile/%s/%s", noteID, t.Target)
+	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(t.Event))
 }
