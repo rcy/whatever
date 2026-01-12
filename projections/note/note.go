@@ -131,6 +131,15 @@ func (p *Projection) FindAllInRealmByCategory(realm uuid.UUID, category string) 
 	return noteList, nil
 }
 
+func (p *Projection) FindAllInRealmByCategoryAndSubcategory(realm uuid.UUID, category string, subcategory string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and category = ? and subcategory = ? order by ts asc`, realm, category, subcategory)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes: %w", err)
+	}
+	return noteList, nil
+}
+
 func (p *Projection) FindAllDeleted() ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from deleted_notes order by ts asc`)

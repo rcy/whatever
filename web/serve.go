@@ -92,6 +92,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		})
 
 		r.Get("/dsnotes/{category}", svc.notesIndex)
+		r.Get("/dsnotes/{category}/{subcategory}", svc.notesIndex)
+
 		r.Post("/dsnotes", svc.postNotesHandler2)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
 		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
@@ -189,11 +191,23 @@ func (s *webservice) header(r *http.Request, viewCategory string) (g.Node, error
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
+	subcategory := chi.URLParam(r, "subcategory") // optional
 
-	noteList, err := s.app.Notes.FindAllInRealmByCategory(realmID, category)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var noteList []note.Note
+	var err error
+
+	if subcategory == "" {
+		noteList, err = s.app.Notes.FindAllInRealmByCategory(realmID, category)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		noteList, err = s.app.Notes.FindAllInRealmByCategoryAndSubcategory(realmID, category, subcategory)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	slices.Reverse(noteList)
 
