@@ -75,7 +75,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		_, err := p.db.Exec(`update notes set text = ? where id = ?`, e.Text, e.NoteID)
 		return err
 	case events.NoteCategoryChanged:
-		_, err := p.db.Exec(`update notes set category = ? where id = ?`, e.Category, e.NoteID)
+		_, err := p.db.Exec(`update notes set category = ?, subcategory = ? where id = ?`, e.Category, e.Subcategory, e.NoteID)
 		return err
 	case events.NoteSubcategoryChanged:
 		_, err := p.db.Exec(`update notes set subcategory = ? where id = ?`, e.Subcategory, e.NoteID)
