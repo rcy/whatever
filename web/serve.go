@@ -358,6 +358,7 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, categor
 		h.Div(h.ID("header"), h.Style("background: pink; padding: 5px; display:flex; justify-content:space-between"),
 			h.Div(h.Style("display:flex; gap:5px"),
 				h.Div(h.Style("display: flex; gap: 5px"),
+					h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/%s", category)))),
 					g.Map(notesmeta.Categories.Get(category).Subcategories, func(s notesmeta.Subcategory) g.Node {
 						text := fmt.Sprintf("[%s]", g.Text(s.Name))
 						return h.Div(h.A(g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
