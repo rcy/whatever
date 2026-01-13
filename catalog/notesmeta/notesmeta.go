@@ -6,6 +6,7 @@ import (
 
 type Category struct {
 	Name          string
+	Default       bool
 	Subcategories SubcategoryList
 }
 
@@ -51,6 +52,8 @@ var Inbox = Category{
 		},
 	},
 }
+
+var DefaultCategory = Inbox
 
 var Task = Category{
 	Name: "task",

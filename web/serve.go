@@ -80,7 +80,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Use(svc.authMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/dsnotes/inbox", http.StatusSeeOther)
+			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Name, http.StatusSeeOther)
 		})
 
 		r.Get("/deleted_notes", svc.deletedNotesHandler)
@@ -135,7 +135,13 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if signals.Body != "" {
-		err := s.app.Commander.Send(commands.CreateNote{NoteID: uuid.New(), RealmID: realmID, Text: signals.Body})
+		err := s.app.Commander.Send(commands.CreateNote{
+			NoteID:      uuid.New(),
+			RealmID:     realmID,
+			Text:        signals.Body,
+			Category:    notesmeta.Inbox.Name,
+			Subcategory: notesmeta.Inbox.DefaultSubcategory().Name,
+		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

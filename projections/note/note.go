@@ -49,7 +49,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 	switch e := evt.(type) {
 	case events.NoteCreated:
 		q := `insert into notes(id, ts, text, realm_id, category, subcategory, state, status) values(?,?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, "inbox", "", "open", "")
+		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, e.Category, e.Subcategory, "open", "")
 		if err != nil {
 			return err
 		}

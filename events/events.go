@@ -17,10 +17,12 @@ type RealmDeleted struct {
 }
 
 type NoteCreated struct {
-	NoteID    uuid.UUID
-	CreatedAt time.Time
-	RealmID   uuid.UUID
-	Text      string
+	NoteID      uuid.UUID
+	CreatedAt   time.Time
+	RealmID     uuid.UUID
+	Text        string
+	Category    string
+	Subcategory string
 }
 
 type NoteEnrichmentRequested struct {

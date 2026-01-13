@@ -45,12 +45,22 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("realm cannot be empty")
 		}
 
+		if c.Category == "" {
+			return nil, fmt.Errorf("category cannot be empty")
+		}
+
+		if c.Subcategory == "" {
+			return nil, fmt.Errorf("subcategory cannot be empty")
+		}
+
 		eventList := []evoke.Event{
 			events.NoteCreated{
-				NoteID:    aggregateID,
-				CreatedAt: time.Now(),
-				RealmID:   c.RealmID,
-				Text:      text,
+				NoteID:      aggregateID,
+				CreatedAt:   time.Now(),
+				RealmID:     c.RealmID,
+				Text:        text,
+				Category:    c.Category,
+				Subcategory: c.Subcategory,
 			},
 		}
 
