@@ -120,8 +120,9 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 }
 
 type signals struct {
-	Body         string `json:"body"`
-	ViewCategory string `json:"viewCategory"`
+	Body            string `json:"body"`
+	ViewCategory    string `json:"viewCategory"`
+	ViewSubcategory string `json:"viewSubcategory"`
 }
 
 func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
@@ -161,10 +162,8 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 	signals.Body = ""
 	sse.MarshalAndPatchSignals(signals)
 
-	headerEl, err := s.header(r, signals.ViewCategory)
+	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
 	if err != nil {
-		fmt.Println("DEBUGX onAk 0", err)
-
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -174,7 +173,7 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 }
 
 // Wrap ui header element with data fetching
-func (s *webservice) header(r *http.Request, viewCategory string) (g.Node, error) {
+func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategory string) (g.Node, error) {
 	realmID := realmFromRequest(r)
 
 	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
@@ -191,7 +190,7 @@ func (s *webservice) header(r *http.Request, viewCategory string) (g.Node, error
 		return nil, fmt.Errorf("Notes.SubcategoryCounts: %w", err)
 	}
 
-	return header(realmID, realmList, viewCategory, categoryCounts, subcategoryCounts), nil
+	return header(realmID, realmList, viewCategory, viewSubcategory, categoryCounts, subcategoryCounts), nil
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +216,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
-	headerEl, err := s.header(r, category)
+	headerEl, err := s.header(r, category, subcategory)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -228,7 +227,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 			h.StyleEl(g.Raw(styles)),
 		),
 		h.Body(
-			h.Div(g.Attr("data-signals", fmt.Sprintf("{viewCategory: '%s'}", category))),
+			h.Div(g.Attr("data-signals", fmt.Sprintf("{viewCategory: '%s', viewSubcategory: '%s'}", category, subcategory))),
 			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
 				h.Div(headerEl),
 				h.Div(input()),
@@ -263,7 +262,7 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 
-	headerEl, err := s.header(r, signals.ViewCategory)
+	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
 	if err != nil {
 		sse.ConsoleError(err)
 		return
@@ -305,7 +304,7 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	headerEl, err := s.header(r, signals.ViewCategory)
+	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
 	if err != nil {
 		sse.ConsoleError(err)
 		return
@@ -333,7 +332,7 @@ func input() g.Node {
 	)
 }
 
-func header(realmID uuid.UUID, realmList []realm.Realm, category string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
+func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
 	return h.Div(h.ID("header"),
 		h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
 			h.Div(h.Style("display:flex; gap:5px"),
@@ -367,7 +366,11 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, categor
 					h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/%s", category)))),
 					g.Map(notesmeta.Categories.Get(category).Subcategories, func(s notesmeta.Subcategory) g.Node {
 						text := fmt.Sprintf("[%s]", g.Text(s.Name))
-						return h.Div(h.A(g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
+						var style g.Node
+						if s.Name == subcategory {
+							style = h.Style("font-weight: bold")
+						}
+						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
 					}))),
 		),
 	)
