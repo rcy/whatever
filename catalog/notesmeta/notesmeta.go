@@ -55,52 +55,65 @@ var Inbox = Category{
 
 var DefaultCategory = Inbox
 
+const (
+	taskNext    = "next"
+	taskStarted = "started"
+	taskNotnow  = "notnow"
+	taskDone    = "done"
+)
+
 var Task = Category{
 	Name: "task",
 	Subcategories: SubcategoryList{
 		{
-			Name: "ready",
+			Name: taskNext,
 			Transitions: []Transition{
-				{Event: "start", Target: "working"},
-				{Event: "notnow", Target: "notnow"},
-				{Event: "done", Target: "done"},
+				{Event: "start", Target: taskStarted},
+				{Event: "notnow", Target: taskNotnow},
+				{Event: "done", Target: taskDone},
 			},
 		},
 		{
-			Name: "working",
+			Name: "started",
 			Transitions: []Transition{
-				{Event: "pause", Target: "ready"},
-				{Event: "done", Target: "done"},
+				{Event: "pause", Target: taskNext},
+				{Event: "done", Target: taskDone},
 			},
 		},
 		{
 			Name: "notnow",
 			Transitions: []Transition{
-				{Event: "ready", Target: "ready"},
+				{Event: "ready", Target: taskNext},
 			},
 		},
 		{
 			Name: "done",
 			Transitions: []Transition{
-				{Event: "undo", Target: "ready"},
+				{Event: "undo", Target: taskNext},
 			},
 		},
 	},
 }
 
+const (
+	referenceProcess = "process"
+	referenceArchive = "archive"
+	referenceRead    = "read"
+)
+
 var Reference = Category{
 	Name: "reference",
 	Subcategories: SubcategoryList{
 		{
-			Name: "process",
+			Name: referenceProcess,
 			Transitions: []Transition{
-				{Event: "archive", Target: "archive"},
+				{Event: "archive", Target: referenceArchive},
 			},
 		},
 		{
-			Name: "archive",
+			Name: referenceArchive,
 			Transitions: []Transition{
-				{Event: "unarchive", Target: "read"},
+				{Event: "unarchive", Target: referenceRead},
 			},
 		},
 	},
