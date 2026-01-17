@@ -405,7 +405,7 @@ func linkify(text string) string {
 			url.Scheme = "https"
 		}
 		domain, err := getDomain(match)
-		return fmt.Sprintf(`<a href="%s">%s</a>`, url.String(), "|"+domain+"|")
+		return fmt.Sprintf(`<a href="%s">%s</a>`, url.String(), domain)
 	})
 }
 
