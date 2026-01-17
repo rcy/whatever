@@ -404,8 +404,24 @@ func linkify(text string) string {
 		if url.Scheme == "" {
 			url.Scheme = "https"
 		}
-		return fmt.Sprintf(`<a href="%s">%s</a>`, url.String(), match)
+		domain, err := getDomain(match)
+		return fmt.Sprintf(`<a href="%s">%s</a>`, url.String(), "|"+domain+"|")
 	})
+}
+
+// return the domain from the url with leading www removed
+func getDomain(link string) (string, error) {
+	if !strings.HasPrefix(link, "http") {
+		link = "https://" + link
+	}
+	url, err := url.Parse(link)
+	if err != nil {
+		return "", err
+	}
+
+	host := strings.TrimLeft(url.Host, "www.")
+
+	return host, nil
 }
 
 func linkifyNode(text string) g.Node {
