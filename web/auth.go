@@ -71,6 +71,7 @@ func (s *sessionManager) issue(w http.ResponseWriter, r *http.Request, user user
 		Name:     sessionCookieName,
 		Value:    token,
 		Path:     "/",
+		MaxAge:   365 * 24 * 3600,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Secure:   secure,
