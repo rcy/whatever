@@ -14,7 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/rcy/disco v0.2.2
-	github.com/rcy/evoke v0.2.0
+	github.com/rcy/evoke v0.2.1
 	github.com/starfederation/datastar-go v1.1.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.248.0
