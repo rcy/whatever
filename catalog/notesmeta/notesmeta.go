@@ -101,13 +101,16 @@ var Reference = Category{
 				{Event: "archive", Target: referenceArchive},
 			},
 		},
+	},
+}
+
+var Idea = Category{
+	Name: "idea",
+	Subcategories: SubcategoryList{
 		{
-			Name: referenceArchive,
-			Transitions: []Transition{
-				{Event: "unarchive", Target: referenceRead},
-			},
+			Name: "default",
 		},
 	},
 }
 
-var Categories = CategoryList{Inbox, Task, Reference}
+var Categories = CategoryList{Inbox, Reference, Idea, Task}

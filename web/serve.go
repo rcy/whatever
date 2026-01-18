@@ -411,11 +411,17 @@ func noteID(note note.Note) string {
 }
 
 func noteEl(note note.Note) g.Node {
+	// cat := note.Category
+	// if len(notesmeta.Categories.Get(note.Category).Subcategories) > 1 {
+	// 	cat += "(" + note.Subcategory + ")"
+	// }
+	// cat += "&rarr;"
+	// cat = ""
 	return h.Div(h.ID(noteID(note)),
 		h.Div(linkifyNode(note.Status+" "+note.Text)),
 		h.Div(h.Style("color: gray; font-size: 70%; line-height:.5em"),
 			h.Div(h.Style("display:flex; gap:2px"),
-				h.Div(g.Raw(fmt.Sprintf("%s(%s)&rarr;", note.Category, note.Subcategory))),
+				//h.Div(g.Raw(cat)),
 				refile(note),
 				h.Div(g.Text(":")),
 				h.Div(g.Text(ago(note.Ts))),
