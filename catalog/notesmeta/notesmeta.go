@@ -56,10 +56,9 @@ var Inbox = Category{
 var DefaultCategory = Inbox
 
 const (
-	taskNext    = "next"
-	taskStarted = "started"
-	taskNotnow  = "notnow"
-	taskDone    = "done"
+	taskNext   = "next"
+	taskNotnow = "notnow"
+	taskDone   = "done"
 )
 
 var Task = Category{
@@ -68,26 +67,18 @@ var Task = Category{
 		{
 			Name: taskNext,
 			Transitions: []Transition{
-				{Event: "start", Target: taskStarted},
 				{Event: "notnow", Target: taskNotnow},
 				{Event: "done", Target: taskDone},
 			},
 		},
 		{
-			Name: "started",
-			Transitions: []Transition{
-				{Event: "pause", Target: taskNext},
-				{Event: "done", Target: taskDone},
-			},
-		},
-		{
-			Name: "notnow",
+			Name: taskNotnow,
 			Transitions: []Transition{
 				{Event: "ready", Target: taskNext},
 			},
 		},
 		{
-			Name: "done",
+			Name: taskDone,
 			Transitions: []Transition{
 				{Event: "undo", Target: taskNext},
 			},
