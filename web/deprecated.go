@@ -166,8 +166,9 @@ func (s *webservice) postSetNotesCategoryHandler(w http.ResponseWriter, r *http.
 
 func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request) {
 	realm := realmFromRequest(r)
+	owner := getUserInfo(r)
 
-	noteList, err := s.app.Notes.FindAllDeleted()
+	noteList, err := s.app.Notes.FindAllDeleted(owner.Id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

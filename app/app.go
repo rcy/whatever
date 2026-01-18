@@ -31,6 +31,7 @@ func New(filename string) (*App, error) {
 		log.Fatal(err)
 	}
 	evoke.RegisterEvent(eventStore, &events.NoteCreated{})
+	evoke.RegisterEvent(eventStore, &events.NoteOwnerSet{})
 	evoke.RegisterEvent(eventStore, &events.NoteEnrichmentRequested{})
 	evoke.RegisterEvent(eventStore, &events.RealmCreated{})
 	evoke.RegisterEvent(eventStore, &events.NoteDeleted{})
@@ -49,6 +50,7 @@ func New(filename string) (*App, error) {
 	noteFactory := func(id uuid.UUID) evoke.Aggregate { return aggregates.NewNoteAggregate(id) }
 	noteHandler := evoke.NewAggregateHandler(eventStore, noteFactory)
 	commandBus.RegisterHandler(commands.CreateNote{}, noteHandler)
+	commandBus.RegisterHandler(commands.SetNoteOwner{}, noteHandler)
 	commandBus.RegisterHandler(commands.DeleteNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.UndeleteNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.UpdateNoteText{}, noteHandler)
@@ -71,6 +73,7 @@ func New(filename string) (*App, error) {
 		log.Fatal(err)
 	}
 	eventBus.Subscribe(events.NoteCreated{}, noteProjection)
+	eventBus.Subscribe(events.NoteOwnerSet{}, noteProjection)
 	eventBus.Subscribe(events.NoteDeleted{}, noteProjection)
 	eventBus.Subscribe(events.NoteUndeleted{}, noteProjection)
 	eventBus.Subscribe(events.NoteTextUpdated{}, noteProjection)

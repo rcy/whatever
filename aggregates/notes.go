@@ -111,6 +111,13 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 		}
 
 		return eventList, nil
+	case commands.SetNoteOwner:
+		return []evoke.Event{
+			events.NoteOwnerSet{
+				NoteID: c.NoteID,
+				Owner:  c.Owner,
+			},
+		}, nil
 	case commands.SetNoteCategory:
 		categoryName := strings.TrimSpace(c.Category)
 		if a.category == categoryName {
@@ -154,6 +161,8 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 	case events.NoteCreated:
 		a.id = evt.NoteID // should already be set?
 		a.text = evt.Text
+		a.owner = evt.Owner
+	case events.NoteOwnerSet:
 		a.owner = evt.Owner
 	case events.NoteDeleted:
 		a.deleted = true

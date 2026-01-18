@@ -12,25 +12,50 @@ import (
 )
 
 type NotesCmd struct {
-	List     ListCmd     `cmd:"" default:"withargs" aliases:"ls"`
-	Show     ShowCmd     `cmd:""`
-	Add      AddCmd      `cmd:""`
-	Delete   DeleteCmd   `cmd:"" aliases:"rm"`
-	Undelete UndeleteCmd `cmd:""`
-	Edit     EditCmd     `cmd:""`
+	List              ListCmd              `cmd:"" default:"withargs" aliases:"ls"`
+	Show              ShowCmd              `cmd:""`
+	Add               AddCmd               `cmd:""`
+	Delete            DeleteCmd            `cmd:"" aliases:"rm"`
+	Undelete          UndeleteCmd          `cmd:""`
+	Edit              EditCmd              `cmd:""`
+	TransferOwnership TransferOwnershipCmd `cmd:""`
+}
+
+type TransferOwnershipCmd struct {
+	OldOwner string
+	NewOwner string `required:""`
+}
+
+func (c *TransferOwnershipCmd) Run(app *app.App) error {
+	noteList, err := app.Notes.FindAll(c.OldOwner)
+	if err != nil {
+		return err
+	}
+	for _, note := range noteList {
+		fmt.Printf("%s %s %s %s\n", note.ID, note.RealmID, note.Category, note.Text)
+		err := app.Commander.Send(commands.SetNoteOwner{
+			NoteID: note.ID,
+			Owner:  c.NewOwner,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type ListCmd struct {
-	Deleted bool `help:"Show deleted notes"`
+	Owner   string `help:"Owner of the notes to list"`
+	Deleted bool   `help:"Show deleted notes"`
 }
 
 func (c *ListCmd) Run(app *app.App) error {
 	var noteList []note.Note
 	var err error
 	if c.Deleted {
-		noteList, err = app.Notes.FindAllDeleted()
+		noteList, err = app.Notes.FindAllDeleted(c.Owner)
 	} else {
-		noteList, err = app.Notes.FindAll("FIXME OWNER")
+		noteList, err = app.Notes.FindAll(c.Owner)
 	}
 	if err != nil {
 		return err

@@ -49,6 +49,13 @@ type UpdateNoteText struct {
 
 func (c UpdateNoteText) AggregateID() uuid.UUID { return c.NoteID }
 
+type SetNoteOwner struct {
+	NoteID uuid.UUID
+	Owner  string
+}
+
+func (c SetNoteOwner) AggregateID() uuid.UUID { return c.NoteID }
+
 type SetNoteRealm struct {
 	NoteID  uuid.UUID
 	RealmID string

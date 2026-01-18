@@ -17,13 +17,18 @@ type RealmDeleted struct {
 }
 
 type NoteCreated struct {
-	Owner       string
 	NoteID      uuid.UUID
+	Owner       string
 	CreatedAt   time.Time
 	RealmID     uuid.UUID
 	Text        string
 	Category    string
 	Subcategory string
+}
+
+type NoteOwnerSet struct {
+	NoteID uuid.UUID
+	Owner  string
 }
 
 type NoteEnrichmentRequested struct {

@@ -52,6 +52,11 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		if err != nil {
 			return err
 		}
+	case events.NoteOwnerSet:
+		_, err := p.db.Exec(`update notes set owner = ? where id = ?`, e.Owner, e.NoteID)
+		if err != nil {
+			return err
+		}
 	case events.NoteDeleted:
 		q := `insert into deleted_notes(id, owner, ts, text, realm_id, category, subcategory, state, status) select id, owner, ts, text, realm_id, category, subcategory, state, status from notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
@@ -139,9 +144,9 @@ func (p *Projection) FindAllInRealmByCategoryAndSubcategory(owner string, realm 
 	return noteList, nil
 }
 
-func (p *Projection) FindAllDeleted() ([]Note, error) {
+func (p *Projection) FindAllDeleted(owner string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from deleted_notes order by ts asc`)
+	err := p.db.Select(&noteList, `select * from deleted_notes where owner = ? order by ts asc`, owner)
 	if err != nil {
 		return nil, fmt.Errorf("Select deleted notes: %w", err)
 	}
