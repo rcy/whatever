@@ -12,36 +12,12 @@ import (
 )
 
 type NotesCmd struct {
-	List              ListCmd              `cmd:"" default:"withargs" aliases:"ls"`
-	Show              ShowCmd              `cmd:""`
-	Add               AddCmd               `cmd:""`
-	Delete            DeleteCmd            `cmd:"" aliases:"rm"`
-	Undelete          UndeleteCmd          `cmd:""`
-	Edit              EditCmd              `cmd:""`
-	TransferOwnership TransferOwnershipCmd `cmd:""`
-}
-
-type TransferOwnershipCmd struct {
-	OldOwner string
-	NewOwner string `required:""`
-}
-
-func (c *TransferOwnershipCmd) Run(app *app.App) error {
-	noteList, err := app.Notes.FindAll(c.OldOwner)
-	if err != nil {
-		return err
-	}
-	for _, note := range noteList {
-		fmt.Printf("%s %s %s %s\n", note.ID, note.RealmID, note.Category, note.Text)
-		err := app.Commander.Send(commands.SetNoteOwner{
-			NoteID: note.ID,
-			Owner:  c.NewOwner,
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	List     ListCmd     `cmd:"" default:"withargs" aliases:"ls"`
+	Show     ShowCmd     `cmd:""`
+	Add      AddCmd      `cmd:""`
+	Delete   DeleteCmd   `cmd:"" aliases:"rm"`
+	Undelete UndeleteCmd `cmd:""`
+	Edit     EditCmd     `cmd:""`
 }
 
 type ListCmd struct {

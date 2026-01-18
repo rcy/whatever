@@ -102,9 +102,35 @@ func New(filename string) (*App, error) {
 	enrichWorker := enrich.NewWorker(commandBus)
 	eventBus.Subscribe(events.NoteEnrichmentRequested{}, enrichWorker)
 
+	err = migrateOwnerlessNotes(noteProjection, commandBus)
+	if err != nil {
+		return nil, err
+	}
+
 	return &App{
 		Commander: commandBus,
 		Notes:     noteProjection,
 		Realms:    realmProjection,
 	}, nil
+}
+
+// One time migration to add an owner to notes without one
+func migrateOwnerlessNotes(p *note.Projection, cmd evoke.CommandSender) error {
+	// find notes with no owner
+	noteList, err := p.FindAll("")
+	if err != nil {
+		return err
+	}
+	for _, note := range noteList {
+		fmt.Printf("%s %s %s %s\n", note.ID, note.RealmID, note.Category, note.Text)
+		err := cmd.Send(commands.SetNoteOwner{
+			NoteID: note.ID,
+			Owner:  "114909697912906591341",
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
