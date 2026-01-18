@@ -30,19 +30,17 @@ const (
 
 type contextKey string
 
-const userContextKey contextKey = "user"
+const UserContextKey contextKey = "user"
 
-type userInfo struct {
+type UserInfo struct {
 	Email   string
 	Name    string
 	Picture string
 }
 
 type sessionPayload struct {
-	Email     string    `json:"email"`
-	Name      string    `json:"name"`
-	Picture   string    `json:"picture"`
-	ExpiresAt time.Time `json:"expires_at"`
+	UserInfo  googleoauth.Userinfo `json:"userInfo"`
+	ExpiresAt time.Time            `json:"expires_at"`
 }
 
 type sessionManager struct {
@@ -56,11 +54,9 @@ func newSessionManager(secret string) (*sessionManager, error) {
 	return &sessionManager{secret: []byte(secret)}, nil
 }
 
-func (s *sessionManager) issue(w http.ResponseWriter, r *http.Request, user userInfo, secure bool) error {
+func (s *sessionManager) issue(w http.ResponseWriter, r *http.Request, userInfo googleoauth.Userinfo, secure bool) error {
 	payload := sessionPayload{
-		Email:     user.Email,
-		Name:      user.Name,
-		Picture:   user.Picture,
+		UserInfo:  userInfo,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
 	token, err := s.sign(payload)
@@ -80,20 +76,16 @@ func (s *sessionManager) issue(w http.ResponseWriter, r *http.Request, user user
 	return nil
 }
 
-func (s *sessionManager) currentUser(r *http.Request) (userInfo, error) {
+func (s *sessionManager) currentUser(r *http.Request) (googleoauth.Userinfo, error) {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		return userInfo{}, err
+		return googleoauth.Userinfo{}, err
 	}
 	payload, err := s.parse(cookie.Value)
 	if err != nil {
-		return userInfo{}, err
+		return googleoauth.Userinfo{}, err
 	}
-	return userInfo{
-		Email:   payload.Email,
-		Name:    payload.Name,
-		Picture: payload.Picture,
-	}, nil
+	return payload.UserInfo, nil
 }
 
 func (s *sessionManager) clear(w http.ResponseWriter, r *http.Request, secure bool) {
@@ -258,7 +250,7 @@ func (s *webservice) authMiddleware(next http.Handler) http.Handler {
 			http.Redirect(w, r, redirect, http.StatusSeeOther)
 			return
 		}
-		ctx := context.WithValue(r.Context(), userContextKey, user)
+		ctx := context.WithValue(r.Context(), UserContextKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -330,12 +322,12 @@ func (s *webservice) authCallbackHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user := userInfo{
-		Email:   info.Email,
-		Name:    info.Name,
-		Picture: info.Picture,
-	}
-	if err := s.sessions.issue(w, r, user, secure); err != nil {
+	// user := UserInfo{
+	// 	Email:   info.Email,
+	// 	Name:    info.Name,
+	// 	Picture: info.Picture,
+	// }
+	if err := s.sessions.issue(w, r, *info, secure); err != nil {
 		http.Error(w, fmt.Sprintf("issue session: %s", err), http.StatusInternalServerError)
 		return
 	}
@@ -348,4 +340,8 @@ func (s *webservice) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	s.sessions.clear(w, r, secure)
 	s.states.clear(w, r, secure)
 	http.Redirect(w, r, "/auth", http.StatusSeeOther)
+}
+
+func getUserInfo(r *http.Request) googleoauth.Userinfo {
+	return r.Context().Value(UserContextKey).(googleoauth.Userinfo)
 }
