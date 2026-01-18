@@ -95,7 +95,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 		r.Get("/events", svc.eventsIndex)
 
-		r.Get("/dsnotes/{category}", svc.notesIndex)
+		r.Get("/dsnotes/{category}", svc.notesIndexRedirect)
 		r.Get("/dsnotes/{category}/{subcategory}", svc.notesIndex)
 
 		r.Post("/dsnotes", svc.postNotesHandler2)
@@ -223,10 +223,17 @@ func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
 	).Render(w)
 }
 
+// redirect to the default subcategory
+func (s *webservice) notesIndexRedirect(w http.ResponseWriter, r *http.Request) {
+	category := chi.URLParam(r, "category")
+	defaultSubcategory := notesmeta.Categories.Get(category).DefaultSubcategory().Name
+	http.Redirect(w, r, fmt.Sprintf("%s/%s", category, defaultSubcategory), http.StatusSeeOther)
+}
+
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
-	subcategory := chi.URLParam(r, "subcategory") // optional
+	subcategory := chi.URLParam(r, "subcategory")
 	owner := getUserInfo(r)
 
 	var noteList []note.Note
