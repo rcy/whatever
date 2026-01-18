@@ -37,6 +37,10 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 
 	switch c := cmd.(type) {
 	case commands.CreateNote:
+		if c.Owner == "" {
+			return nil, fmt.Errorf("owner cannot be empty")
+		}
+
 		text := strings.TrimSpace(c.Text)
 		if text == "" {
 			return nil, fmt.Errorf("text cannot be empty")
