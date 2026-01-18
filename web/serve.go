@@ -126,6 +126,8 @@ type signals struct {
 }
 
 func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
+	userInfo := getUserInfo(r)
+
 	realmID := realmFromRequest(r)
 
 	var signals signals
@@ -137,6 +139,7 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 
 	if signals.Body != "" {
 		err := s.app.Commander.Send(commands.CreateNote{
+			Owner:       userInfo.Id,
 			NoteID:      uuid.New(),
 			RealmID:     realmID,
 			Text:        signals.Body,
@@ -175,8 +178,9 @@ func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
 // Wrap ui header element with data fetching
 func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategory string) (g.Node, error) {
 	realmID := realmFromRequest(r)
+	owner := getUserInfo(r)
 
-	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	categoryCounts, err := s.app.Notes.CategoryCounts(owner.Id, realmID)
 	if err != nil {
 		return nil, fmt.Errorf("Notes.CategoryCounts: %w", err)
 	}
@@ -185,7 +189,7 @@ func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategor
 		return nil, fmt.Errorf("Realms.FindAll: %w", err)
 	}
 
-	subcategoryCounts, err := s.app.Notes.SubcategoryCounts(realmID, viewCategory)
+	subcategoryCounts, err := s.app.Notes.SubcategoryCounts(owner.Id, realmID, viewCategory)
 	if err != nil {
 		return nil, fmt.Errorf("Notes.SubcategoryCounts: %w", err)
 	}
@@ -197,18 +201,19 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
 	subcategory := chi.URLParam(r, "subcategory") // optional
+	owner := getUserInfo(r)
 
 	var noteList []note.Note
 	var err error
 
 	if subcategory == "" {
-		noteList, err = s.app.Notes.FindAllInRealmByCategory(realmID, category)
+		noteList, err = s.app.Notes.FindAllInRealmByCategory(owner.Id, realmID, category)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		noteList, err = s.app.Notes.FindAllInRealmByCategoryAndSubcategory(realmID, category, subcategory)
+		noteList, err = s.app.Notes.FindAllInRealmByCategoryAndSubcategory(owner.Id, realmID, category, subcategory)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

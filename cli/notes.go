@@ -30,7 +30,7 @@ func (c *ListCmd) Run(app *app.App) error {
 	if c.Deleted {
 		noteList, err = app.Notes.FindAllDeleted()
 	} else {
-		noteList, err = app.Notes.FindAll()
+		noteList, err = app.Notes.FindAll("FIXME OWNER")
 	}
 	if err != nil {
 		return err

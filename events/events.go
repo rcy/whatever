@@ -17,6 +17,7 @@ type RealmDeleted struct {
 }
 
 type NoteCreated struct {
+	Owner       string
 	NoteID      uuid.UUID
 	CreatedAt   time.Time
 	RealmID     uuid.UUID

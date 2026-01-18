@@ -93,8 +93,9 @@ func page2(realmID uuid.UUID, realmList []realm.Realm, category string, category
 func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
+	owner := getUserInfo(r)
 
-	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	categoryCounts, err := s.app.Notes.CategoryCounts(owner.Id, realmID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,7 +107,7 @@ func (s *webservice) notesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	noteList, err := s.app.Notes.FindAllInRealmByCategory(realmID, category)
+	noteList, err := s.app.Notes.FindAllInRealmByCategory(owner.Id, realmID, category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -198,7 +199,7 @@ func (s *webservice) deletedNotesHandler(w http.ResponseWriter, r *http.Request)
 
 func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
-
+	owner := getUserInfo(r)
 	id := chi.URLParam(r, "id")
 
 	note, err := s.app.Notes.FindOne(id)
@@ -213,7 +214,7 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+	categoryCounts, err := s.app.Notes.CategoryCounts(owner.Id, realmID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -228,7 +229,7 @@ func (s *webservice) showNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request) {
 	realmID := realmFromRequest(r)
-
+	owner := getUserInfo(r)
 	id := chi.URLParam(r, "id")
 
 	note, err := s.app.Notes.FindOne(id)
@@ -245,7 +246,7 @@ func (s *webservice) showEditNoteHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		categoryCounts, err := s.app.Notes.CategoryCounts(realmID)
+		categoryCounts, err := s.app.Notes.CategoryCounts(owner.Id, realmID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

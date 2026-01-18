@@ -14,6 +14,7 @@ import (
 
 type noteAggregate struct {
 	id          uuid.UUID
+	owner       string
 	deleted     bool
 	text        string
 	category    string
@@ -55,6 +56,7 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 
 		eventList := []evoke.Event{
 			events.NoteCreated{
+				Owner:       c.Owner,
 				NoteID:      aggregateID,
 				CreatedAt:   time.Now(),
 				RealmID:     c.RealmID,
@@ -152,6 +154,7 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 	case events.NoteCreated:
 		a.id = evt.NoteID // should already be set?
 		a.text = evt.Text
+		a.owner = evt.Owner
 	case events.NoteDeleted:
 		a.deleted = true
 	case events.NoteUndeleted:

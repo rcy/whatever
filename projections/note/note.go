@@ -13,6 +13,7 @@ import (
 
 type Note struct {
 	ID          uuid.UUID `db:"id"`
+	Owner       string    `db:"owner"`
 	Ts          time.Time `db:"ts"`
 	Text        string    `db:"text"`
 	Category    string    `db:"category"`
@@ -31,7 +32,7 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null unique, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
+	_, err = db.Exec(`create table notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
@@ -44,17 +45,15 @@ func New() (*Projection, error) {
 }
 
 func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
-	fmt.Println(evt)
-
 	switch e := evt.(type) {
 	case events.NoteCreated:
-		q := `insert into notes(id, ts, text, realm_id, category, subcategory, state, status) values(?,?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.CreatedAt, e.Text, e.RealmID, e.Category, e.Subcategory, "open", "")
+		q := `insert into notes(id, owner, ts, text, realm_id, category, subcategory, state, status) values(?,?,?,?,?,?,?,?,?)`
+		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.RealmID, e.Category, e.Subcategory, "open", "")
 		if err != nil {
 			return err
 		}
 	case events.NoteDeleted:
-		q := `insert into deleted_notes(id, ts, text, realm_id, category, subcategory, state, status) select id, ts, text, realm_id, category, subcategory, state, status from notes where id = ?`
+		q := `insert into deleted_notes(id, owner, ts, text, realm_id, category, subcategory, state, status) select id, owner, ts, text, realm_id, category, subcategory, state, status from notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -63,7 +62,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		_, err = p.db.Exec(`delete from notes where id = ?`, e.NoteID)
 		return err
 	case events.NoteUndeleted:
-		q := `insert into notes(id, ts, text, realm_id, category, subcategory, state, status) select id, ts, text, realm_id, category, subcategory, state, status from deleted_notes where id = ?`
+		q := `insert into notes(id, owner, ts, text, realm_id, category, subcategory, state, status) select id, owner, ts, text, realm_id, category, subcategory, state, status from deleted_notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -104,36 +103,36 @@ func (p *Projection) FindOne(id string) (Note, error) {
 	return note, nil
 }
 
-func (p *Projection) FindAll() ([]Note, error) {
+func (p *Projection) FindAll(owner string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes order by ts asc`)
+	err := p.db.Select(&noteList, `select * from notes where owner = ? order by ts asc`, owner)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}
 	return noteList, nil
 }
 
-func (p *Projection) FindAllInRealm(realmID string) ([]Note, error) {
+func (p *Projection) FindAllInRealm(owner string, realmID string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where realm_id = ? order by ts asc`, realmID)
+	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and owner = ? order by ts asc`, realmID, owner)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes in realm: %w", err)
 	}
 	return noteList, nil
 }
 
-func (p *Projection) FindAllInRealmByCategory(realm uuid.UUID, category string) ([]Note, error) {
+func (p *Projection) FindAllInRealmByCategory(owner string, realmID uuid.UUID, category string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and category = ? order by ts asc`, realm, category)
+	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and owner = ? and category = ? order by ts asc`, realmID, owner, category)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}
 	return noteList, nil
 }
 
-func (p *Projection) FindAllInRealmByCategoryAndSubcategory(realm uuid.UUID, category string, subcategory string) ([]Note, error) {
+func (p *Projection) FindAllInRealmByCategoryAndSubcategory(owner string, realm uuid.UUID, category string, subcategory string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and category = ? and subcategory = ? order by ts asc`, realm, category, subcategory)
+	err := p.db.Select(&noteList, `select * from notes where owner = ? and realm_id = ? and category = ? and subcategory = ? order by ts asc`, owner, realm, category, subcategory)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}
@@ -154,9 +153,9 @@ type CategoryCount struct {
 	Count    int `db:"count"`
 }
 
-func (p *Projection) CategoryCounts(realmID uuid.UUID) ([]CategoryCount, error) {
+func (p *Projection) CategoryCounts(owner string, realmID uuid.UUID) ([]CategoryCount, error) {
 	var categories []CategoryCount
-	err := p.db.Select(&categories, `select count(*) count, category from notes where realm_id = ? group by category`, realmID)
+	err := p.db.Select(&categories, `select count(*) count, category from notes where owner = ? and realm_id = ? group by category`, owner, realmID)
 	if err != nil {
 		return nil, fmt.Errorf("select categories: %w", err)
 	}
@@ -168,9 +167,9 @@ type SubcategoryCount struct {
 	Count       int `db:"count"`
 }
 
-func (p *Projection) SubcategoryCounts(realmID uuid.UUID, category string) ([]SubcategoryCount, error) {
+func (p *Projection) SubcategoryCounts(owner string, realmID uuid.UUID, category string) ([]SubcategoryCount, error) {
 	var categories []SubcategoryCount
-	err := p.db.Select(&categories, `select count(*) count, subcategory from notes where realm_id = ? and category = ? group by subcategory`, realmID, category)
+	err := p.db.Select(&categories, `select count(*) count, subcategory from notes where owner = ? and realm_id = ? and category = ? group by subcategory`, owner, realmID, category)
 	if err != nil {
 		return nil, fmt.Errorf("select subcategories: %w", err)
 	}
