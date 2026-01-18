@@ -36,7 +36,7 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null unique, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
+	_, err = db.Exec(`create table deleted_notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
