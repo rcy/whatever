@@ -1,6 +1,7 @@
 package web
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,9 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
+
+//go:embed style.css
+var styles string
 
 type Config struct {
 	BaseURL            string
@@ -85,9 +89,6 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Name, http.StatusSeeOther)
 		})
 
-		r.Get("/deleted_notes", svc.deletedNotesHandler)
-		//r.Get("/events", svc.eventsHandler)
-
 		r.Post("/realm", func(w http.ResponseWriter, r *http.Request) {
 			svc.setRealmCookie(w, r, r.FormValue("realm"))
 			w.Header().Set("HX-Redirect", "")
@@ -98,26 +99,9 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Get("/dsnotes/{category}", svc.notesIndexRedirect)
 		r.Get("/dsnotes/{category}/{subcategory}", svc.notesIndex)
 
-		r.Post("/dsnotes", svc.postNotesHandler2)
+		r.Post("/dsnotes", svc.postNotesHandler)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
 		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
-
-		r.Route("/notes", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				http.Redirect(w, r, "/notes/inbox", http.StatusSeeOther)
-			})
-			r.Post("/", svc.postNotesHandler)
-			r.Post("/{id}/set/{category}", svc.postSetNotesCategoryHandler)
-			r.Route("/{category}", func(r chi.Router) {
-				r.Get("/", svc.notesHandler)
-				r.Get("/{id}", svc.showNoteHandler)
-
-				r.HandleFunc("/{id}/edit", svc.showEditNoteHandler)
-
-				r.Post("/{id}/delete", svc.deleteNoteHandler)
-			})
-			r.Post("/{id}/undelete", svc.undeleteNoteHandler)
-		})
 	})
 
 	return r, nil
@@ -129,7 +113,7 @@ type signals struct {
 	ViewSubcategory string `json:"viewSubcategory"`
 }
 
-func (s *webservice) postNotesHandler2(w http.ResponseWriter, r *http.Request) {
+func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo := getUserInfo(r)
 
 	realmID := realmFromRequest(r)
