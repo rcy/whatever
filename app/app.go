@@ -16,9 +16,12 @@ import (
 )
 
 type App struct {
-	Commander evoke.CommandSender
-	Notes     *note.Projection
-	Realms    *realm.Projection
+	Commander     evoke.CommandSender
+	Notes         *note.Projection
+	Realms        *realm.Projection
+	EventDebugger interface {
+		DebugEvents() ([]evoke.RecordedEvent, error)
+	}
 }
 
 func New(filename string) (*App, error) {
@@ -108,9 +111,10 @@ func New(filename string) (*App, error) {
 	}
 
 	return &App{
-		Commander: commandBus,
-		Notes:     noteProjection,
-		Realms:    realmProjection,
+		Commander:     commandBus,
+		Notes:         noteProjection,
+		Realms:        realmProjection,
+		EventDebugger: eventStore,
 	}, nil
 }
 

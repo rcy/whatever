@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
@@ -90,6 +92,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 			svc.setRealmCookie(w, r, r.FormValue("realm"))
 			w.Header().Set("HX-Redirect", "")
 		})
+
+		r.Get("/events", svc.eventsIndex)
 
 		r.Get("/dsnotes/{category}", svc.notesIndex)
 		r.Get("/dsnotes/{category}/{subcategory}", svc.notesIndex)
@@ -195,6 +199,28 @@ func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategor
 	}
 
 	return header(realmID, realmList, viewCategory, viewSubcategory, categoryCounts, subcategoryCounts), nil
+}
+
+func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
+	events, err := s.app.EventDebugger.DebugEvents()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(events)
+
+	h.HTML(
+		h.Body(
+			h.H1(g.Text("events")),
+			g.Map(events, func(ev evoke.RecordedEvent) g.Node {
+				data, err := json.Marshal(ev)
+				if err != nil {
+					return h.Div(h.Style("color: red"), g.Text(err.Error()))
+				}
+				return h.Div(g.Text(string(data)))
+			}),
+		),
+	).Render(w)
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
