@@ -88,8 +88,6 @@ var Task = Category{
 
 const (
 	referenceProcess = "process"
-	referenceArchive = "archive"
-	referenceRead    = "read"
 )
 
 var Reference = Category{
@@ -97,9 +95,6 @@ var Reference = Category{
 	Subcategories: SubcategoryList{
 		{
 			Name: referenceProcess,
-			Transitions: []Transition{
-				{Event: "archive", Target: referenceArchive},
-			},
 		},
 	},
 }
