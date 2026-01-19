@@ -382,19 +382,20 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 					})),
 			)),
 
-		h.Div(h.ID("header"), h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
-			h.Div(h.Style("display: flex; gap: 5px"),
-				g.Map(notesmeta.Categories.Get(category).Subcategories, func(s notesmeta.Subcategory) g.Node {
-					text := fmt.Sprintf("[%s]", g.Text(s.Name))
-					var style g.Node
-					if s.Name == subcategory {
-						style = h.Style("font-weight: bold")
-					}
-					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
-				}),
-			),
-			h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
-		),
+		g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
+			h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
+				h.Div(h.Style("display: flex; gap: 5px"),
+					g.Map(notesmeta.Categories.Get(category).Subcategories, func(s notesmeta.Subcategory) g.Node {
+						text := fmt.Sprintf("[%s]", g.Text(s.Name))
+						var style g.Node
+						if s.Name == subcategory {
+							style = h.Style("font-weight: bold")
+						}
+						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
+					}),
+				),
+				h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
+			)),
 	)
 }
 
