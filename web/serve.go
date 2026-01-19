@@ -423,8 +423,8 @@ func noteEl(note note.Note) g.Node {
 			h.Div(h.Style("display:flex; gap:2px"),
 				//h.Div(g.Raw(cat)),
 				refile(note),
-				h.Div(g.Text(":")),
-				h.Div(g.Text(ago(note.Ts))),
+				//h.Div(g.Text(":")),
+				//h.Div(g.Text(ago(note.Ts))),
 			),
 		),
 	)
@@ -441,14 +441,16 @@ func refile(note note.Note) g.Node {
 			}))
 	}
 
+	transitions := notesmeta.Categories.Get(note.Category).Subcategories.Get(note.Subcategory).Transitions
+
 	return h.Div(h.Style("display:flex; gap:2px"),
 		g.Group{
-			g.Map(notesmeta.Categories.Get(note.Category).Subcategories.Get(note.Subcategory).Transitions,
+			g.Map(transitions,
 				func(t notesmeta.Transition) g.Node {
 					return subfileButton(note.ID, t)
 				},
 			),
-			g.Text(" | "),
+			g.If(len(transitions) > 0, g.Text(" | ")),
 			refileButton(note.ID, "inbox", "refile"),
 		},
 	)
