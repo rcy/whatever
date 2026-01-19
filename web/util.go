@@ -32,6 +32,12 @@ func linkify(text string) string {
 	})
 }
 
+// Return all the links in a string
+func getLinks(text string) []string {
+	re := xurls.Relaxed()
+	return re.FindAllString(text, -1)
+}
+
 // return the domain from the url with leading www removed
 func getDomain(link string) (string, error) {
 	if !strings.HasPrefix(link, "http") {

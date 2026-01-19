@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"github.com/kkdai/youtube/v2"
 	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/catalog/notesmeta"
@@ -216,12 +217,63 @@ func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := s.page(r, note.Category, note.Subcategory, noteEl(note))
+	// show the note
+	// show some buttons
+	// edit / delete / archive
+
+	links, err := noteLinksEl(note)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	page := h.Div(
+		noteEl(note),
+		// h.Form(
+		// 	g.Attr("data-on:submit", fmt.Sprintf("@post('/note/%s/comment', {contentType: 'form'})", note.ID)),
+		// 	h.Textarea(
+		// 		h.Name("bodyx"),
+		// 		h.Rows("3"),
+		// 		h.Style("width:100%"),
+		// 	),
+		// 	h.Button(g.Text("submit")),
+		// ),
+		links,
+		//youtubeDownloadButton(note),
+	)
+
+	content, err := s.page(r, note.Category, note.Subcategory, page)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	content.Render(w)
+}
+
+func noteLinksEl(note note.Note) (g.Node, error) {
+	links := getLinks(note.Text)
+
+	return h.Div(
+		g.Map(links, func(link string) g.Node {
+			embed, err := youtubeEmbed(link)
+			if err != nil {
+				h.Div(g.Text("error DKNh"))
+			}
+
+			return h.Div(
+				h.Div(g.Text(link)),
+				embed)
+		})), nil
+}
+
+func youtubeEmbed(link string) (g.Node, error) {
+	videoID, err := youtube.ExtractVideoID(link)
+	if err != nil {
+		return nil, err
+	}
+	return h.IFrame(h.Width("560"), h.Height("315"),
+		h.Src("https://www.youtube.com/embed/"+videoID),
+		g.Attr("allowfullscreen")), nil
 }
 
 // redirect to the default subcategory
@@ -447,7 +499,7 @@ func noteEl(note note.Note) g.Node {
 			h.A(h.Href(noteLink(note)),
 				linkifyNode(note.Status+" "+note.Text)),
 		),
-		h.Div(h.Style("color: gray; font-size: 70%; line-height:.5em"),
+		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
 			h.Div(h.Style("display:flex; gap:2px"),
 				refile(note),
 			),
