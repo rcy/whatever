@@ -94,6 +94,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 			w.Header().Set("HX-Redirect", "")
 		})
 
+		r.Get("/note/{id}", svc.showNote)
+
 		r.Get("/events", svc.eventsIndex)
 
 		r.Get("/dsnotes/{category}", svc.notesIndexRedirect)
@@ -159,7 +161,6 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("headerEl", headerEl)
 	sse.PatchElementGostar(headerEl)
 }
 
@@ -207,6 +208,22 @@ func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
 	).Render(w)
 }
 
+func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
+	noteID := chi.URLParam(r, "id")
+	note, err := s.app.Notes.FindOne(noteID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	content, err := s.page(r, note.Category, note.Subcategory, noteEl(note))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	content.Render(w)
+}
+
 // redirect to the default subcategory
 func (s *webservice) notesIndexRedirect(w http.ResponseWriter, r *http.Request) {
 	category := chi.URLParam(r, "category")
@@ -238,12 +255,20 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
-	headerEl, err := s.header(r, category, subcategory)
+	content, err := s.page(r, category, subcategory, notes(noteList))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	h.HTML(
+	content.Render(w)
+}
+
+func (s *webservice) page(r *http.Request, category string, subcategory string, node g.Node) (g.Node, error) {
+	headerEl, err := s.header(r, category, subcategory)
+	if err != nil {
+		return nil, err
+	}
+	return h.HTML(
 		h.Head(
 			h.Script(h.Type("module"), h.Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js")),
 			h.StyleEl(g.Raw(styles)),
@@ -253,10 +278,10 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
 				h.Div(headerEl),
 				h.Div(input()),
-				h.Div(notes(noteList)),
+				h.Div(node),
 			),
 		),
-	).Render(w)
+	), nil
 }
 
 func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
@@ -411,9 +436,17 @@ func noteID(note note.Note) string {
 	return fmt.Sprintf("note-%s", note.ID)
 }
 
+// Return a link to the note
+func noteLink(note note.Note) string {
+	return fmt.Sprintf("/note/%s", note.ID)
+}
+
 func noteEl(note note.Note) g.Node {
 	return h.Div(h.ID(noteID(note)),
-		h.Div(linkifyNode(note.Status+" "+note.Text)),
+		h.Div(
+			h.A(h.Href(noteLink(note)),
+				linkifyNode(note.Status+" "+note.Text)),
+		),
 		h.Div(h.Style("color: gray; font-size: 70%; line-height:.5em"),
 			h.Div(h.Style("display:flex; gap:2px"),
 				refile(note),
