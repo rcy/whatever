@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -227,6 +228,13 @@ func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actions := h.Div(
+		h.Div(h.A(g.Text("torrent"), h.Href("https://thepiratebay11.com/search/"+url.PathEscape(note.Text)))),
+		h.Div(h.A(g.Text("ddg"), h.Href("https://duckduckgo.com/?q="+url.QueryEscape(note.Text)))),
+		h.Div(h.A(g.Text("goog"), h.Href("https://www.youtube.com/results?search_query="+url.PathEscape(note.Text)))),
+		h.Div(h.A(g.Text("wiki"), h.Href("https://en.wikipedia.org/w/index.php?title=Special:Search&search="+url.QueryEscape(note.Text)))),
+	)
+
 	page := h.Div(
 		noteEl(note),
 		// h.Form(
@@ -239,6 +247,7 @@ func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
 		// 	h.Button(g.Text("submit")),
 		// ),
 		links,
+		actions,
 		//youtubeDownloadButton(note),
 	)
 
