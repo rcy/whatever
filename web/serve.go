@@ -106,6 +106,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Post("/dsnotes", svc.postNotesHandler)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
 		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
+		r.Post("/delete/{noteID}", svc.postDeleteNote)
+		r.Post("/undelete/{noteID}", svc.postUndeleteNote)
 	})
 
 	return r, nil
@@ -220,7 +222,7 @@ func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
 
 	// show the note
 	// show some buttons
-	// edit / delete / archive
+	// edit / delete / delete
 
 	links, err := noteLinksEl(note)
 	if err != nil {
@@ -368,13 +370,13 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sse := datastar.NewSSE(w, r)
-
 	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
 	if err != nil {
-		sse.ConsoleError(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	sse := datastar.NewSSE(w, r)
 	sse.PatchElementGostar(headerEl)
 
 	note, err := s.app.Notes.FindOne(noteID.String())
@@ -398,8 +400,6 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sse := datastar.NewSSE(w, r)
-
 	noteID, err := uuid.Parse(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -414,9 +414,11 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 
 	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
 	if err != nil {
-		sse.ConsoleError(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	sse := datastar.NewSSE(w, r)
 	sse.PatchElementGostar(headerEl)
 
 	note, err := s.app.Notes.FindOne(noteID.String())
@@ -427,6 +429,85 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 	noteEl := noteEl(note)
 
 	sse.PatchElementGostar(noteEl)
+}
+
+func (s *webservice) postDeleteNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "noteID")
+
+	noteID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	note, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.app.Commander.Send(commands.DeleteNote{NoteID: noteID})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var signals signals
+	err = datastar.ReadSignals(r, &signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementGostar(headerEl)
+
+	sse.PatchElementGostar(deletedNoteEl(note))
+}
+
+func (s *webservice) postUndeleteNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "noteID")
+
+	noteID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.app.Commander.Send(commands.UndeleteNote{NoteID: noteID})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var signals signals
+	err = datastar.ReadSignals(r, &signals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementGostar(headerEl)
+
+	note, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		sse.ConsoleError(err)
+		return
+	}
+	sse.PatchElementGostar(noteEl(note))
 }
 
 func input() g.Node {
@@ -516,6 +597,20 @@ func noteEl(note note.Note) g.Node {
 	)
 }
 
+func deletedNoteEl(note note.Note) g.Node {
+	return h.Div(h.ID(noteID(note)),
+		h.Div(h.Style("color: gray; text-decoration: line-through"),
+			h.A(h.Href(noteLink(note)),
+				linkifyNode(note.Status+" "+note.Text)),
+		),
+		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
+			h.Div(h.Style("display:flex; gap:2px"),
+				undeleteButton(note.ID),
+			),
+		),
+	)
+}
+
 func refile(note note.Note) g.Node {
 	if note.Category == "inbox" {
 		return h.Div(h.Style("display:flex; gap:2px"),
@@ -524,7 +619,9 @@ func refile(note note.Note) g.Node {
 					return nil
 				}
 				return refileButton(note.ID, c.Name, c.Name)
-			}))
+			}),
+			deleteButton(note.ID),
+		)
 	}
 
 	transitions := notesmeta.Categories.Get(note.Category).Subcategories.Get(note.Subcategory).Transitions
@@ -538,6 +635,7 @@ func refile(note note.Note) g.Node {
 			),
 			g.If(len(transitions) > 0, g.Text(" | ")),
 			refileButton(note.ID, "inbox", "refile"),
+			deleteButton(note.ID),
 		},
 	)
 }
@@ -550,4 +648,20 @@ func refileButton(noteID uuid.UUID, category string, label string) g.Node {
 func subfileButton(noteID uuid.UUID, t notesmeta.Transition) g.Node {
 	url := fmt.Sprintf("/subfile/%s/%s", noteID, t.Target)
 	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(t.Event))
+}
+
+func deleteButton(noteID uuid.UUID) g.Node {
+	url := fmt.Sprintf("/delete/%s", noteID)
+	return h.Button(
+		h.Class("link"),
+		g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)),
+		g.Text("delete"))
+}
+
+func undeleteButton(noteID uuid.UUID) g.Node {
+	url := fmt.Sprintf("/undelete/%s", noteID)
+	return h.Button(
+		h.Class("link"),
+		g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)),
+		g.Text("undelete"))
 }
