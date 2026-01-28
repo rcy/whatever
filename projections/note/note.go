@@ -23,6 +23,11 @@ type Note struct {
 	Status      string    `db:"status"`
 }
 
+type Person struct {
+	Owner  string `db:"owner"`
+	Handle string `db:"handle"`
+}
+
 type Projection struct {
 	db *sqlx.DB
 }
@@ -41,6 +46,16 @@ func New() (*Projection, error) {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
 
+	_, err = db.Exec(`create table people(handle primary key, owner not null)`)
+	if err != nil {
+		return nil, fmt.Errorf("create table people: %w", err)
+	}
+
+	_, err = db.Exec(`create table note_people(handle string, note_id string)`)
+	if err != nil {
+		return nil, fmt.Errorf("create table note_people: %w", err)
+	}
+
 	return &Projection{db: db}, nil
 }
 
@@ -51,6 +66,18 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.RealmID, e.Category, e.Subcategory, "open", "")
 		if err != nil {
 			return err
+		}
+
+		for _, mention := range extractMentions(e.Text) {
+			fmt.Println("MENTION:", mention)
+			_, err := p.db.Exec(`insert into people(owner, handle) values(?,?) on conflict do nothing`, e.Owner, mention)
+			if err != nil {
+				return err
+			}
+			_, err = p.db.Exec(`insert into note_people(note_id, handle) values(?,?)`, e.NoteID, mention)
+			if err != nil {
+				return err
+			}
 		}
 	case events.NoteOwnerSet:
 		_, err := p.db.Exec(`update notes set owner = ? where id = ?`, e.Owner, e.NoteID)
@@ -108,9 +135,27 @@ func (p *Projection) FindOne(id string) (Note, error) {
 	return note, nil
 }
 
+func (p *Projection) FindAllPeople(owner string) ([]Person, error) {
+	var peopleList []Person
+	err := p.db.Select(&peopleList, `select * from people where owner = ?`, owner)
+	if err != nil {
+		return nil, fmt.Errorf("Select people: %w", err)
+	}
+	return peopleList, nil
+}
+
 func (p *Projection) FindAll(owner string) ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where owner = ? order by ts asc`, owner)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes: %w", err)
+	}
+	return noteList, nil
+}
+
+func (p *Projection) FindAllByPerson(owner string, handle string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList, `select notes.* from notes join note_people on note_people.note_id = notes.id where owner = ? and handle = ? order by ts asc`, owner, handle)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}

@@ -108,4 +108,14 @@ var Idea = Category{
 	},
 }
 
-var Categories = CategoryList{Inbox, Reference, Idea, Task}
+var People = Category{
+	Name: "people",
+	Subcategories: SubcategoryList{
+		{
+			Name: "default",
+		},
+	},
+}
+
+var Categories = CategoryList{Inbox, Reference, Idea, Task, People}
+var RefileCategories = CategoryList{Inbox, Reference, Idea, Task}

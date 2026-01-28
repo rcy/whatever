@@ -103,6 +103,9 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Get("/dsnotes/{category}", svc.notesIndexRedirect)
 		r.Get("/dsnotes/{category}/{subcategory}", svc.notesIndex)
 
+		r.Get("/dsnotes/people", svc.notesPeople)
+		r.Get("/dsnotes/people/{handle}", svc.notesPeople)
+
 		r.Post("/dsnotes", svc.postNotesHandler)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
 		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
@@ -319,6 +322,49 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	slices.Reverse(noteList)
 
 	content, err := s.page(r, category, subcategory, notes(noteList))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	content.Render(w)
+}
+
+func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
+	owner := getUserInfo(r)
+	handle := chi.URLParam(r, "handle")
+
+	people, err := s.app.Notes.FindAllPeople(owner.Id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var notes []note.Note
+	if handle != "" {
+		notes, err = s.app.Notes.FindAllByPerson(owner.Id, handle)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	content, err := s.page(r, "people", "", h.Div(
+		h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
+			h.Div(h.Style("display: flex; gap: 5px"),
+				g.Map(people, func(person note.Person) g.Node {
+					text := fmt.Sprintf("[%s]", g.Text(person.Handle))
+					var style g.Node
+					if person.Handle == handle {
+						style = h.Style("font-weight: bold")
+					}
+					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/people/%s", person.Handle))))
+				}),
+			),
+			h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/people/all")))),
+		),
+		g.Map(notes, func(note note.Note) g.Node {
+			return noteEl(note)
+		})))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -614,7 +660,7 @@ func deletedNoteEl(note note.Note) g.Node {
 func refile(note note.Note) g.Node {
 	if note.Category == "inbox" {
 		return h.Div(h.Style("display:flex; gap:2px"),
-			g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
+			g.Map(notesmeta.RefileCategories, func(c notesmeta.Category) g.Node {
 				if c.Name == "inbox" {
 					return nil
 				}
