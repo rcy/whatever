@@ -340,8 +340,7 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var notes []note.Note
-	if handleParam == "all" {
-		handleParam = ""
+	if handleParam == "" {
 		notes, err = s.app.Notes.FindAllWithMention(owner.Id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -367,7 +366,7 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/people/%s", handle))))
 				}),
 			),
-			h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/people/all")))),
+			h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/people")))),
 		),
 		g.Map(notes, func(note note.Note) g.Node {
 			return noteEl(note)
