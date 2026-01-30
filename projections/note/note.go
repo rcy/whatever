@@ -45,11 +45,6 @@ func New() (*Projection, error) {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
 
-	_, err = db.Exec(`create table people(handle primary key, owner not null)`)
-	if err != nil {
-		return nil, fmt.Errorf("create table people: %w", err)
-	}
-
 	_, err = db.Exec(`create table note_people(handle string, note_id string)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table note_people: %w", err)
@@ -68,10 +63,6 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		}
 
 		for _, mention := range extractMentions(e.Text) {
-			_, err := p.db.Exec(`insert into people(owner, handle) values(?,?)`, e.Owner, mention)
-			if err != nil {
-				return err
-			}
 			_, err = p.db.Exec(`insert into note_people(note_id, handle) values(?,?)`, e.NoteID, mention)
 			if err != nil {
 				return err
@@ -139,9 +130,9 @@ func (p *Projection) FindOne(id string) (Note, error) {
 
 func (p *Projection) FindAllPeople(owner string) ([]string, error) {
 	var handles []string
-	err := p.db.Select(&handles, `select handle from notes join note_people on note_people.note_id = notes.id where owner = ?`, owner)
+	err := p.db.Select(&handles, `select distinct handle from note_people join notes on note_people.note_id = notes.id where owner = ?`, owner)
 	if err != nil {
-		return nil, fmt.Errorf("Select people: %w", err)
+		return nil, fmt.Errorf("Select notes: %w", err)
 	}
 	return handles, nil
 }
@@ -165,8 +156,6 @@ func (p *Projection) FindAllByPerson(owner string, handle string) ([]Note, error
 }
 
 func (p *Projection) FindAllWithMention(owner string) ([]Note, error) {
-	fmt.Println("DEBUGX xvwG 2")
-
 	var noteList []Note
 	err := p.db.Select(&noteList, `select distinct notes.* from notes join note_people on note_people.note_id = notes.id where owner = ? order by ts asc`, owner)
 	if err != nil {
