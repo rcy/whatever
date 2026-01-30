@@ -24,7 +24,6 @@ type Note struct {
 }
 
 type Person struct {
-	Owner  string `db:"owner"`
 	Handle string `db:"handle"`
 }
 
@@ -69,8 +68,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		}
 
 		for _, mention := range extractMentions(e.Text) {
-			fmt.Println("MENTION:", mention)
-			_, err := p.db.Exec(`insert into people(owner, handle) values(?,?) on conflict do nothing`, e.Owner, mention)
+			_, err := p.db.Exec(`insert into people(owner, handle) values(?,?)`, e.Owner, mention)
 			if err != nil {
 				return err
 			}
@@ -92,6 +90,10 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		}
 
 		_, err = p.db.Exec(`delete from notes where id = ?`, e.NoteID)
+		if err != nil {
+			return err
+		}
+
 		return err
 	case events.NoteUndeleted:
 		q := `insert into notes(id, owner, ts, text, realm_id, category, subcategory, state, status) select id, owner, ts, text, realm_id, category, subcategory, state, status from deleted_notes where id = ?`
@@ -135,13 +137,13 @@ func (p *Projection) FindOne(id string) (Note, error) {
 	return note, nil
 }
 
-func (p *Projection) FindAllPeople(owner string) ([]Person, error) {
-	var peopleList []Person
-	err := p.db.Select(&peopleList, `select * from people where owner = ?`, owner)
+func (p *Projection) FindAllPeople(owner string) ([]string, error) {
+	var handles []string
+	err := p.db.Select(&handles, `select handle from notes join note_people on note_people.note_id = notes.id where owner = ?`, owner)
 	if err != nil {
 		return nil, fmt.Errorf("Select people: %w", err)
 	}
-	return peopleList, nil
+	return handles, nil
 }
 
 func (p *Projection) FindAll(owner string) ([]Note, error) {

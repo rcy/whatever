@@ -331,7 +331,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 	owner := getUserInfo(r)
-	handle := chi.URLParam(r, "handle")
+	handleFilter := chi.URLParam(r, "handle")
 
 	people, err := s.app.Notes.FindAllPeople(owner.Id)
 	if err != nil {
@@ -340,8 +340,8 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var notes []note.Note
-	if handle != "" {
-		notes, err = s.app.Notes.FindAllByPerson(owner.Id, handle)
+	if handleFilter != "" {
+		notes, err = s.app.Notes.FindAllByPerson(owner.Id, handleFilter)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -351,13 +351,13 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 	content, err := s.page(r, "people", "", h.Div(
 		h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
 			h.Div(h.Style("display: flex; gap: 5px"),
-				g.Map(people, func(person note.Person) g.Node {
-					text := fmt.Sprintf("[%s]", g.Text(person.Handle))
+				g.Map(people, func(handle string) g.Node {
+					text := fmt.Sprintf("[%s]", g.Text(handle))
 					var style g.Node
-					if person.Handle == handle {
+					if handle == handleFilter {
 						style = h.Style("font-weight: bold")
 					}
-					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/people/%s", person.Handle))))
+					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/people/%s", handle))))
 				}),
 			),
 			h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/people/all")))),
