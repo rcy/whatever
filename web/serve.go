@@ -331,7 +331,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 	owner := getUserInfo(r)
-	handleFilter := chi.URLParam(r, "handle")
+	handleParam := chi.URLParam(r, "handle")
 
 	people, err := s.app.Notes.FindAllPeople(owner.Id)
 	if err != nil {
@@ -340,8 +340,15 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var notes []note.Note
-	if handleFilter != "" {
-		notes, err = s.app.Notes.FindAllByPerson(owner.Id, handleFilter)
+	if handleParam == "all" {
+		handleParam = ""
+		notes, err = s.app.Notes.FindAllWithMention(owner.Id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		notes, err = s.app.Notes.FindAllByPerson(owner.Id, handleParam)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -354,7 +361,7 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 				g.Map(people, func(handle string) g.Node {
 					text := fmt.Sprintf("[%s]", g.Text(handle))
 					var style g.Node
-					if handle == handleFilter {
+					if handle == handleParam {
 						style = h.Style("font-weight: bold")
 					}
 					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/people/%s", handle))))

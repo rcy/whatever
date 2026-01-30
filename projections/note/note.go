@@ -164,6 +164,17 @@ func (p *Projection) FindAllByPerson(owner string, handle string) ([]Note, error
 	return noteList, nil
 }
 
+func (p *Projection) FindAllWithMention(owner string) ([]Note, error) {
+	fmt.Println("DEBUGX xvwG 2")
+
+	var noteList []Note
+	err := p.db.Select(&noteList, `select distinct notes.* from notes join note_people on note_people.note_id = notes.id where owner = ? order by ts asc`, owner)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes: %w", err)
+	}
+	return noteList, nil
+}
+
 func (p *Projection) FindAllInRealm(owner string, realmID string) ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and owner = ? order by ts asc`, realmID, owner)
