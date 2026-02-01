@@ -660,7 +660,7 @@ func noteCategoryDisplay(n note.Note) string {
 
 	// don't print the subcategory if the category doesn't have more than 1
 	if len(cat.Subcategories) <= 1 {
-		return n.Category
+		return cat.DisplayName
 	}
 	return subcat.DisplayName // + " " + cat.DisplayName
 }
