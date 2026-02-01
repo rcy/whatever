@@ -129,17 +129,6 @@ var Reference = Category{
 	},
 }
 
-var Idea = Category{
-	Slug:        "idea",
-	DisplayName: "Idea",
-	Subcategories: SubcategoryList{
-		{
-			Slug:        "default",
-			DisplayName: "Default",
-		},
-	},
-}
-
 var People = Category{
 	Slug:        "people",
 	DisplayName: "People",
@@ -151,5 +140,5 @@ var People = Category{
 	},
 }
 
-var Categories = CategoryList{Inbox, Task, Reference, Idea, People}
-var RefileCategories = CategoryList{Inbox, Task, Reference, Idea}
+var Categories = CategoryList{Inbox, Task, Reference, People}
+var RefileCategories = CategoryList{Inbox, Task, Reference}
