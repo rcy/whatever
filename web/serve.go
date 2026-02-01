@@ -360,7 +360,7 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 		h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
 			h.Div(h.Style("display: flex; gap: 5px"),
 				g.Map(people, func(handle string) g.Node {
-					text := fmt.Sprintf("[%s]", g.Text(handle))
+					text := fmt.Sprintf("@%s", g.Text(handle))
 					var style g.Node
 					if handle == handleParam {
 						style = h.Style("font-weight: bold")
