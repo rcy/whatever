@@ -59,11 +59,11 @@ var Inbox = Category{
 var DefaultCategory = Inbox
 
 const (
-	taskNext      = "next"
-	taskNotnow    = "notnow"
-	taskThisWeek  = "thisweek"
-	taskThisMonth = "thismonth"
-	taskDone      = "done"
+	taskNext        = "next"
+	taskUnscheduled = "notnow"
+	taskThisWeek    = "thisweek"
+	taskThisMonth   = "thismonth"
+	taskDone        = "done"
 )
 
 var Task = Category{
@@ -71,7 +71,7 @@ var Task = Category{
 	DisplayName: "Task",
 	Subcategories: SubcategoryList{
 		{
-			Slug:        taskNotnow,
+			Slug:        taskUnscheduled,
 			DisplayName: "Unscheduled",
 			Transitions: []Transition{
 				{Event: "today", Target: taskNext},
@@ -84,7 +84,7 @@ var Task = Category{
 			Slug:        taskNext,
 			DisplayName: "Today",
 			Transitions: []Transition{
-				{Event: "reschedule", Target: taskNotnow},
+				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
 			},
 		},
@@ -92,7 +92,7 @@ var Task = Category{
 			Slug:        taskThisWeek,
 			DisplayName: "This Week",
 			Transitions: []Transition{
-				{Event: "reschedule", Target: taskNotnow},
+				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
 			},
 		},
@@ -100,7 +100,7 @@ var Task = Category{
 			Slug:        taskThisMonth,
 			DisplayName: "This Month",
 			Transitions: []Transition{
-				{Event: "reschedule", Target: taskNotnow},
+				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
 			},
 		},
