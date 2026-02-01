@@ -88,7 +88,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Use(svc.authMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Name, http.StatusSeeOther)
+			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Slug, http.StatusSeeOther)
 		})
 
 		r.Post("/realm", func(w http.ResponseWriter, r *http.Request) {
@@ -140,8 +140,8 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 			NoteID:      uuid.New(),
 			RealmID:     realmID,
 			Text:        signals.Body,
-			Category:    notesmeta.Inbox.Name,
-			Subcategory: notesmeta.Inbox.DefaultSubcategory().Name,
+			Category:    notesmeta.Inbox.Slug,
+			Subcategory: notesmeta.Inbox.DefaultSubcategory().Slug,
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -295,7 +295,7 @@ func youtubeEmbed(link string) (g.Node, error) {
 // redirect to the default subcategory
 func (s *webservice) notesIndexRedirect(w http.ResponseWriter, r *http.Request) {
 	category := chi.URLParam(r, "category")
-	defaultSubcategory := notesmeta.Categories.Get(category).DefaultSubcategory().Name
+	defaultSubcategory := notesmeta.Categories.Get(category).DefaultSubcategory().Slug
 	http.Redirect(w, r, fmt.Sprintf("%s/%s", category, defaultSubcategory), http.StatusSeeOther)
 }
 
@@ -582,14 +582,14 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 				h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
 				h.Div(h.Style("display: flex; gap: 5px"),
 					g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
-						text := fmt.Sprintf("[%s]", c.Name)
-						if c.Name == category {
+						text := fmt.Sprintf("[%s]", c.DisplayName)
+						if c.Slug == category {
 							return h.Div(
 								h.A(h.Style("font-weight: bold"),
 									g.Text(text),
-									h.Href("/dsnotes/"+c.Name)))
+									h.Href("/dsnotes/"+c.Slug)))
 						} else {
-							return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+c.Name)))
+							return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+c.Slug)))
 						}
 					}))),
 			h.Div(
@@ -606,13 +606,13 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 		g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
 			h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
 				h.Div(h.Style("display: flex; gap: 5px"),
-					g.Map(notesmeta.Categories.Get(category).Subcategories, func(s notesmeta.Subcategory) g.Node {
-						text := fmt.Sprintf("[%s]", g.Text(s.Name))
+					g.Map(notesmeta.Categories.Get(category).Subcategories, func(sub notesmeta.Subcategory) g.Node {
+						text := fmt.Sprintf("[%s]", g.Text(sub.DisplayName))
 						var style g.Node
-						if s.Name == subcategory {
+						if sub.Slug == subcategory {
 							style = h.Style("font-weight: bold")
 						}
-						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, s.Name))))
+						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, sub.Slug))))
 					}),
 				),
 				h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
@@ -655,10 +655,14 @@ func noteEl(note note.Note) g.Node {
 }
 
 func noteCategoryDisplay(n note.Note) string {
-	if len(notesmeta.Categories.Get(n.Category).Subcategories) == 1 {
+	cat := notesmeta.Categories.Get(n.Category)
+	subcat := cat.Subcategories.Get(n.Subcategory)
+
+	// don't print the subcategory if the category doesn't have more than 1
+	if len(cat.Subcategories) <= 1 {
 		return n.Category
 	}
-	return n.Subcategory + " " + n.Category
+	return subcat.DisplayName // + " " + cat.DisplayName
 }
 
 func deletedNoteEl(note note.Note) g.Node {
@@ -679,10 +683,10 @@ func refile(note note.Note) g.Node {
 	if note.Category == "inbox" {
 		return h.Div(h.Style("display:flex; gap:2px"),
 			g.Map(notesmeta.RefileCategories, func(c notesmeta.Category) g.Node {
-				if c.Name == "inbox" {
+				if c.Slug == notesmeta.Inbox.Slug {
 					return nil
 				}
-				return refileButton(note.ID, c.Name, c.Name)
+				return refileButton(note.ID, c.Slug, c.DisplayName)
 			}),
 			deleteButton(note.ID),
 		)

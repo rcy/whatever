@@ -5,7 +5,8 @@ import (
 )
 
 type Category struct {
-	Name          string
+	Slug          string
+	DisplayName   string
 	Default       bool
 	Subcategories SubcategoryList
 }
@@ -20,14 +21,15 @@ type Transition struct {
 }
 
 type Subcategory struct {
-	Name        string
+	Slug        string
+	DisplayName string
 	Transitions []Transition
 }
 
 type CategoryList []Category
 
-func (l CategoryList) Get(name string) Category {
-	i := slices.IndexFunc(l, func(c Category) bool { return c.Name == name })
+func (l CategoryList) Get(slug string) Category {
+	i := slices.IndexFunc(l, func(c Category) bool { return c.Slug == slug })
 	if i == -1 {
 		i = 0
 	}
@@ -36,8 +38,8 @@ func (l CategoryList) Get(name string) Category {
 
 type SubcategoryList []Subcategory
 
-func (l SubcategoryList) Get(name string) Subcategory {
-	i := slices.IndexFunc(l, func(c Subcategory) bool { return c.Name == name })
+func (l SubcategoryList) Get(slug string) Subcategory {
+	i := slices.IndexFunc(l, func(c Subcategory) bool { return c.Slug == slug })
 	if i == -1 {
 		i = 0
 	}
@@ -45,10 +47,11 @@ func (l SubcategoryList) Get(name string) Subcategory {
 }
 
 var Inbox = Category{
-	Name: "inbox",
+	Slug:        "inbox",
+	DisplayName: "Inbox",
 	Subcategories: SubcategoryList{
 		{
-			Name: "default",
+			Slug: "default",
 		},
 	},
 }
@@ -56,29 +59,54 @@ var Inbox = Category{
 var DefaultCategory = Inbox
 
 const (
-	taskNext   = "next"
-	taskNotnow = "notnow"
-	taskDone   = "done"
+	taskNext      = "next"
+	taskNotnow    = "notnow"
+	taskThisWeek  = "thisweek"
+	taskThisMonth = "thismonth"
+	taskDone      = "done"
 )
 
 var Task = Category{
-	Name: "task",
+	Slug:        "task",
+	DisplayName: "Task",
 	Subcategories: SubcategoryList{
 		{
-			Name: taskNext,
+			Slug:        taskNotnow,
+			DisplayName: "Unscheduled",
 			Transitions: []Transition{
-				{Event: "notnow", Target: taskNotnow},
+				{Event: "today", Target: taskNext},
+				{Event: "thisweek", Target: taskThisWeek},
+				{Event: "thismonth", Target: taskThisMonth},
 				{Event: "done", Target: taskDone},
 			},
 		},
 		{
-			Name: taskNotnow,
+			Slug:        taskNext,
+			DisplayName: "Today",
 			Transitions: []Transition{
-				{Event: "ready", Target: taskNext},
+				{Event: "reschedule", Target: taskNotnow},
+				{Event: "done", Target: taskDone},
 			},
 		},
 		{
-			Name: taskDone,
+			Slug:        taskThisWeek,
+			DisplayName: "This Week",
+			Transitions: []Transition{
+				{Event: "reschedule", Target: taskNotnow},
+				{Event: "done", Target: taskDone},
+			},
+		},
+		{
+			Slug:        taskThisMonth,
+			DisplayName: "This Month",
+			Transitions: []Transition{
+				{Event: "reschedule", Target: taskNotnow},
+				{Event: "done", Target: taskDone},
+			},
+		},
+		{
+			Slug:        taskDone,
+			DisplayName: "Done!",
 			Transitions: []Transition{
 				{Event: "undo", Target: taskNext},
 			},
@@ -91,31 +119,37 @@ const (
 )
 
 var Reference = Category{
-	Name: "reference",
+	Slug:        "reference",
+	DisplayName: "Note",
 	Subcategories: SubcategoryList{
 		{
-			Name: referenceProcess,
+			Slug:        referenceProcess,
+			DisplayName: "Process",
 		},
 	},
 }
 
 var Idea = Category{
-	Name: "idea",
+	Slug:        "idea",
+	DisplayName: "Idea",
 	Subcategories: SubcategoryList{
 		{
-			Name: "default",
+			Slug:        "default",
+			DisplayName: "Default",
 		},
 	},
 }
 
 var People = Category{
-	Name: "people",
+	Slug:        "people",
+	DisplayName: "People",
 	Subcategories: SubcategoryList{
 		{
-			Name: "default",
+			Slug:        "default",
+			DisplayName: "Default",
 		},
 	},
 }
 
-var Categories = CategoryList{Inbox, Reference, Idea, Task, People}
-var RefileCategories = CategoryList{Inbox, Reference, Idea, Task}
+var Categories = CategoryList{Inbox, Task, Reference, Idea, People}
+var RefileCategories = CategoryList{Inbox, Task, Reference, Idea}

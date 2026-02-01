@@ -134,7 +134,7 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			events.NoteCategoryChanged{
 				NoteID:      aggregateID,
 				Category:    categoryName,
-				Subcategory: subcategory.Name,
+				Subcategory: subcategory.Slug,
 			},
 		}, nil
 	case commands.SetNoteSubcategory:
