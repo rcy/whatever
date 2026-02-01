@@ -173,18 +173,18 @@ func (p *Projection) FindAllInRealm(owner string, realmID string) ([]Note, error
 	return noteList, nil
 }
 
-func (p *Projection) FindAllInRealmByCategory(owner string, realmID uuid.UUID, category string) ([]Note, error) {
+func (p *Projection) FindAllByCategory(owner string, category string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and owner = ? and category = ? order by ts asc`, realmID, owner, category)
+	err := p.db.Select(&noteList, `select * from notes where owner = ? and category = ? order by ts asc`, owner, category)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}
 	return noteList, nil
 }
 
-func (p *Projection) FindAllInRealmByCategoryAndSubcategory(owner string, realm uuid.UUID, category string, subcategory string) ([]Note, error) {
+func (p *Projection) FindAllByCategoryAndSubcategory(owner string, category string, subcategory string) ([]Note, error) {
 	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where owner = ? and realm_id = ? and category = ? and subcategory = ? order by ts asc`, owner, realm, category, subcategory)
+	err := p.db.Select(&noteList, `select * from notes where owner = ? and category = ? and subcategory = ? order by ts asc`, owner, category, subcategory)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
 	}
@@ -205,9 +205,9 @@ type CategoryCount struct {
 	Count    int `db:"count"`
 }
 
-func (p *Projection) CategoryCounts(owner string, realmID uuid.UUID) ([]CategoryCount, error) {
+func (p *Projection) CategoryCounts(owner string) ([]CategoryCount, error) {
 	var categories []CategoryCount
-	err := p.db.Select(&categories, `select count(*) count, category from notes where owner = ? and realm_id = ? group by category`, owner, realmID)
+	err := p.db.Select(&categories, `select count(*) count, category from notes where owner = ? group by category`, owner)
 	if err != nil {
 		return nil, fmt.Errorf("select categories: %w", err)
 	}
@@ -219,9 +219,9 @@ type SubcategoryCount struct {
 	Count       int `db:"count"`
 }
 
-func (p *Projection) SubcategoryCounts(owner string, realmID uuid.UUID, category string) ([]SubcategoryCount, error) {
+func (p *Projection) SubcategoryCounts(owner string, category string) ([]SubcategoryCount, error) {
 	var categories []SubcategoryCount
-	err := p.db.Select(&categories, `select count(*) count, subcategory from notes where owner = ? and realm_id = ? and category = ? group by subcategory`, owner, realmID, category)
+	err := p.db.Select(&categories, `select count(*) count, subcategory from notes where owner = ? and category = ? group by subcategory`, owner, category)
 	if err != nil {
 		return nil, fmt.Errorf("select subcategories: %w", err)
 	}

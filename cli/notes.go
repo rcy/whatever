@@ -56,21 +56,14 @@ func (c *ShowCmd) Run(app *app.App) error {
 }
 
 type AddCmd struct {
-	Realm string
-	Text  []string `arg:""`
+	Text []string `arg:""`
 }
 
 func (c *AddCmd) Run(app *app.App) error {
-	realm, err := app.Realms.FindByName(c.Realm)
-	if err != nil {
-		return err
-	}
-
 	noteID := uuid.New()
-	err = app.Commander.Send(commands.CreateNote{
-		NoteID:  noteID,
-		RealmID: realm.ID,
-		Text:    strings.Join(c.Text, " "),
+	err := app.Commander.Send(commands.CreateNote{
+		NoteID: noteID,
+		Text:   strings.Join(c.Text, " "),
 	})
 	if err != nil {
 		return err

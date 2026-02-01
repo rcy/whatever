@@ -46,10 +46,6 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("text cannot be empty")
 		}
 
-		if c.RealmID == uuid.Nil {
-			return nil, fmt.Errorf("realm cannot be empty")
-		}
-
 		if c.Category == "" {
 			return nil, fmt.Errorf("category cannot be empty")
 		}
@@ -63,7 +59,6 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 				Owner:       c.Owner,
 				NoteID:      aggregateID,
 				CreatedAt:   time.Now(),
-				RealmID:     c.RealmID,
 				Text:        text,
 				Category:    c.Category,
 				Subcategory: c.Subcategory,

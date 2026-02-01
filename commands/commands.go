@@ -22,7 +22,6 @@ func (c DeleteRealm) AggregateID() uuid.UUID { return c.RealmID }
 type CreateNote struct {
 	Owner       string
 	NoteID      uuid.UUID
-	RealmID     uuid.UUID
 	Text        string
 	Category    string
 	Subcategory string

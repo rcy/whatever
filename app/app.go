@@ -11,14 +11,12 @@ import (
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/projections/note"
-	"github.com/rcy/whatever/projections/realm"
 	"github.com/rcy/whatever/workers/enrich"
 )
 
 type App struct {
 	Commander     evoke.CommandSender
 	Notes         *note.Projection
-	Realms        *realm.Projection
 	EventDebugger interface {
 		DebugEvents() ([]evoke.RecordedEvent, error)
 	}
@@ -62,10 +60,6 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.CompleteNoteEnrichment{}, noteHandler)
 	commandBus.RegisterHandler(commands.FailNoteEnrichment{}, noteHandler)
 
-	realmFactory := func(id uuid.UUID) evoke.Aggregate { return aggregates.NewRealmAggregate(id) }
-	realmHandler := evoke.NewAggregateHandler(eventStore, realmFactory)
-	commandBus.RegisterHandler(commands.CreateRealm{}, realmHandler)
-
 	//
 	// PROJECTIONS
 	//
@@ -86,11 +80,11 @@ func New(filename string) (*App, error) {
 	eventBus.Subscribe(events.NoteEnriched{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnrichmentFailed{}, noteProjection)
 
-	realmProjection, err := realm.New()
-	if err != nil {
-		log.Fatal(err)
-	}
-	eventBus.Subscribe(events.RealmCreated{}, realmProjection)
+	// realmProjection, err := realm.New()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// eventBus.Subscribe(events.RealmCreated{}, realmProjection)
 
 	// replay old events through the bus
 	err = eventStore.ReplayFrom(0, eventBus.Publish)
@@ -113,7 +107,6 @@ func New(filename string) (*App, error) {
 	return &App{
 		Commander:     commandBus,
 		Notes:         noteProjection,
-		Realms:        realmProjection,
 		EventDebugger: eventStore,
 	}, nil
 }

@@ -19,7 +19,6 @@ import (
 	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/projections/note"
-	"github.com/rcy/whatever/projections/realm"
 	"github.com/starfederation/datastar-go/datastar"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -78,7 +77,6 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Use(svc.realmMiddleware)
 
 	r.Get("/auth", svc.authHandler)
 	r.Get("/auth/callback", svc.authCallbackHandler)
@@ -89,11 +87,6 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Slug, http.StatusSeeOther)
-		})
-
-		r.Post("/realm", func(w http.ResponseWriter, r *http.Request) {
-			svc.setRealmCookie(w, r, r.FormValue("realm"))
-			w.Header().Set("HX-Redirect", "")
 		})
 
 		r.Get("/note/{id}", svc.showNote)
@@ -125,8 +118,6 @@ type signals struct {
 func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo := getUserInfo(r)
 
-	realmID := realmFromRequest(r)
-
 	var signals signals
 	err := datastar.ReadSignals(r, &signals)
 	if err != nil {
@@ -138,7 +129,6 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 		err := s.app.Commander.Send(commands.CreateNote{
 			Owner:       userInfo.Id,
 			NoteID:      uuid.New(),
-			RealmID:     realmID,
 			Text:        signals.Body,
 			Category:    notesmeta.Inbox.Slug,
 			Subcategory: notesmeta.Inbox.DefaultSubcategory().Slug,
@@ -173,24 +163,18 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 
 // Wrap ui header element with data fetching
 func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategory string) (g.Node, error) {
-	realmID := realmFromRequest(r)
 	owner := getUserInfo(r)
 
-	categoryCounts, err := s.app.Notes.CategoryCounts(owner.Id, realmID)
+	categoryCounts, err := s.app.Notes.CategoryCounts(owner.Id)
 	if err != nil {
 		return nil, fmt.Errorf("Notes.CategoryCounts: %w", err)
 	}
-	realmList, err := s.app.Realms.FindAll()
-	if err != nil {
-		return nil, fmt.Errorf("Realms.FindAll: %w", err)
-	}
-
-	subcategoryCounts, err := s.app.Notes.SubcategoryCounts(owner.Id, realmID, viewCategory)
+	subcategoryCounts, err := s.app.Notes.SubcategoryCounts(owner.Id, viewCategory)
 	if err != nil {
 		return nil, fmt.Errorf("Notes.SubcategoryCounts: %w", err)
 	}
 
-	return header(realmID, realmList, viewCategory, viewSubcategory, categoryCounts, subcategoryCounts), nil
+	return header(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts), nil
 }
 
 func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
@@ -300,7 +284,6 @@ func (s *webservice) notesIndexRedirect(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
-	realmID := realmFromRequest(r)
 	category := chi.URLParam(r, "category")
 	subcategory := chi.URLParam(r, "subcategory")
 	owner := getUserInfo(r)
@@ -309,13 +292,13 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if subcategory == "all" {
-		noteList, err = s.app.Notes.FindAllInRealmByCategory(owner.Id, realmID, category)
+		noteList, err = s.app.Notes.FindAllByCategory(owner.Id, category)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		noteList, err = s.app.Notes.FindAllInRealmByCategoryAndSubcategory(owner.Id, realmID, category, subcategory)
+		noteList, err = s.app.Notes.FindAllByCategoryAndSubcategory(owner.Id, category, subcategory)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -575,7 +558,7 @@ func input() g.Node {
 	)
 }
 
-func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
+func header(category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
 	return h.Div(h.ID("header"),
 		h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
 			h.Div(h.Style("display:flex; gap:5px"),
@@ -593,14 +576,7 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 						}
 					}))),
 			h.Div(
-				h.Select(g.Attr("hx-post", "/realm"), h.Name("realm"),
-					g.Map(realmList, func(realm realm.Realm) g.Node {
-						return h.Option(
-							h.Value(realm.ID.String()),
-							g.Text(realm.Name),
-							g.If(realmID == realm.ID, h.Selected()),
-						)
-					})),
+				g.Text("REALMS WERE HERE"),
 			)),
 
 		g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
