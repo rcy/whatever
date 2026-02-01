@@ -642,7 +642,7 @@ func noteEl(note note.Note) g.Node {
 		h.Div(
 			h.A(h.Href(noteLink(note)),
 				h.Span(
-					h.Span(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
+					h.Span(h.Style("color:gray"), g.Text("["+noteCategoryDisplay(note)+"]")),
 					h.Span(g.Raw("&nbsp;")),
 					h.Span(linkifyNode(note.Text)))),
 		),
