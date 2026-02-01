@@ -639,9 +639,10 @@ func noteEl(note note.Note) g.Node {
 	return h.Div(h.ID(noteID(note)),
 		h.Div(
 			h.A(h.Href(noteLink(note)),
-				h.Div(h.Style("display:flex; gap:5px"),
-					h.Div(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
-					h.Div(linkifyNode(note.Text)))),
+				h.Span(
+					h.Span(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
+					h.Span(g.Raw("&nbsp;")),
+					h.Span(linkifyNode(note.Text)))),
 		),
 		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
 			h.Div(h.Style("display:flex; gap:2px"),
