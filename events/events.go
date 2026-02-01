@@ -6,21 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
-type RealmCreated struct {
+type RealmCreated struct { // deprecated
 	RealmID   uuid.UUID
 	CreatedAt time.Time
 	Name      string
-}
-
-type RealmDeleted struct {
-	RealmID uuid.UUID
 }
 
 type NoteCreated struct {
 	NoteID      uuid.UUID
 	Owner       string
 	CreatedAt   time.Time
-	RealmID     uuid.UUID
 	Text        string
 	Category    string
 	Subcategory string
@@ -59,10 +54,6 @@ type NoteCategoryChanged struct {
 type NoteSubcategoryChanged struct {
 	NoteID      uuid.UUID
 	Subcategory string
-}
-
-type NoteRealmChanged struct {
-	RealmID string
 }
 
 type NoteTaskCompleted struct {

@@ -6,19 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type CreateRealm struct {
-	RealmID uuid.UUID
-	Name    string
-}
-
-func (c CreateRealm) AggregateID() uuid.UUID { return c.RealmID }
-
-type DeleteRealm struct {
-	RealmID uuid.UUID
-}
-
-func (c DeleteRealm) AggregateID() uuid.UUID { return c.RealmID }
-
 type CreateNote struct {
 	Owner       string
 	NoteID      uuid.UUID
@@ -54,13 +41,6 @@ type SetNoteOwner struct {
 }
 
 func (c SetNoteOwner) AggregateID() uuid.UUID { return c.NoteID }
-
-type SetNoteRealm struct {
-	NoteID  uuid.UUID
-	RealmID string
-}
-
-func (c SetNoteRealm) AggregateID() uuid.UUID { return c.NoteID }
 
 type SetNoteCategory struct {
 	NoteID   uuid.UUID

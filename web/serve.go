@@ -574,10 +574,7 @@ func header(category string, subcategory string, categoryCounts []note.CategoryC
 						} else {
 							return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+c.Slug)))
 						}
-					}))),
-			h.Div(
-				g.Text("REALMS WERE HERE"),
-			)),
+					})))),
 
 		g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
 			h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),

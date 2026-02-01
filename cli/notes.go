@@ -37,7 +37,7 @@ func (c *ListCmd) Run(app *app.App) error {
 		return err
 	}
 	for _, note := range noteList {
-		fmt.Printf("%s %s %s %s\n", note.ID, note.RealmID, note.Category, note.Text)
+		fmt.Printf("%s %s %s\n", note.ID, note.Category, note.Text)
 	}
 	return nil
 }

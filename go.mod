@@ -12,6 +12,7 @@ require (
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
+	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/rcy/disco v0.2.2
 	github.com/rcy/evoke v0.2.1
@@ -49,7 +50,6 @@ require (
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
-	github.com/kkdai/youtube/v2 v2.10.5 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -80,3 +80,5 @@ require (
 )
 
 tool github.com/air-verse/air
+
+//replace github.com/rcy/evoke => ../evoke

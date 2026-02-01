@@ -34,7 +34,7 @@ func New(filename string) (*App, error) {
 	evoke.RegisterEvent(eventStore, &events.NoteCreated{})
 	evoke.RegisterEvent(eventStore, &events.NoteOwnerSet{})
 	evoke.RegisterEvent(eventStore, &events.NoteEnrichmentRequested{})
-	evoke.RegisterEvent(eventStore, &events.RealmCreated{})
+	evoke.RegisterEvent(eventStore, &events.RealmCreated{}) // deprecated
 	evoke.RegisterEvent(eventStore, &events.NoteDeleted{})
 	evoke.RegisterEvent(eventStore, &events.NoteUndeleted{})
 	evoke.RegisterEvent(eventStore, &events.NoteTextUpdated{})
@@ -80,12 +80,6 @@ func New(filename string) (*App, error) {
 	eventBus.Subscribe(events.NoteEnriched{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnrichmentFailed{}, noteProjection)
 
-	// realmProjection, err := realm.New()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// eventBus.Subscribe(events.RealmCreated{}, realmProjection)
-
 	// replay old events through the bus
 	err = eventStore.ReplayFrom(0, eventBus.Publish)
 	if err != nil {
@@ -119,7 +113,7 @@ func migrateOwnerlessNotes(p *note.Projection, cmd evoke.CommandSender) error {
 		return err
 	}
 	for _, note := range noteList {
-		fmt.Printf("%s %s %s %s\n", note.ID, note.RealmID, note.Category, note.Text)
+		fmt.Printf("%s %s %s\n", note.ID, note.Category, note.Text)
 		err := cmd.Send(commands.SetNoteOwner{
 			NoteID: note.ID,
 			Owner:  "114909697912906591341",

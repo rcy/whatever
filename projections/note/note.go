@@ -18,7 +18,6 @@ type Note struct {
 	Text        string    `db:"text"`
 	Category    string    `db:"category"`
 	Subcategory string    `db:"subcategory"`
-	RealmID     uuid.UUID `db:"realm_id"`
 	State       string    `db:"state"`
 	Status      string    `db:"status"`
 }
@@ -36,11 +35,11 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
+	_, err = db.Exec(`create table notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, realm_id not null, state not null, status not null)`)
+	_, err = db.Exec(`create table deleted_notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
@@ -56,8 +55,8 @@ func New() (*Projection, error) {
 func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 	switch e := evt.(type) {
 	case events.NoteCreated:
-		q := `insert into notes(id, owner, ts, text, realm_id, category, subcategory, state, status) values(?,?,?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.RealmID, e.Category, e.Subcategory, "open", "")
+		q := `insert into notes(id, owner, ts, text, category, subcategory, state, status) values(?,?,?,?,?,?,?,?)`
+		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.Category, e.Subcategory, "open", "")
 		if err != nil {
 			return err
 		}
@@ -74,7 +73,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 			return err
 		}
 	case events.NoteDeleted:
-		q := `insert into deleted_notes(id, owner, ts, text, realm_id, category, subcategory, state, status) select id, owner, ts, text, realm_id, category, subcategory, state, status from notes where id = ?`
+		q := `insert into deleted_notes(id, owner, ts, text, category, subcategory, state, status) select id, owner, ts, text, category, subcategory, state, status from notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -87,7 +86,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 
 		return err
 	case events.NoteUndeleted:
-		q := `insert into notes(id, owner, ts, text, realm_id, category, subcategory, state, status) select id, owner, ts, text, realm_id, category, subcategory, state, status from deleted_notes where id = ?`
+		q := `insert into notes(id, owner, ts, text, category, subcategory, state, status) select id, owner, ts, text, category, subcategory, state, status from deleted_notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -160,15 +159,6 @@ func (p *Projection) FindAllWithMention(owner string) ([]Note, error) {
 	err := p.db.Select(&noteList, `select distinct notes.* from notes join note_people on note_people.note_id = notes.id where owner = ? order by ts asc`, owner)
 	if err != nil {
 		return nil, fmt.Errorf("Select notes: %w", err)
-	}
-	return noteList, nil
-}
-
-func (p *Projection) FindAllInRealm(owner string, realmID string) ([]Note, error) {
-	var noteList []Note
-	err := p.db.Select(&noteList, `select * from notes where realm_id = ? and owner = ? order by ts asc`, realmID, owner)
-	if err != nil {
-		return nil, fmt.Errorf("Select notes in realm: %w", err)
 	}
 	return noteList, nil
 }
