@@ -117,6 +117,7 @@ var Task = Category{
 const (
 	noteUncategorized = "process"
 	noteReference     = "reference"
+	noteBookmark      = "bookmark"
 	noteGratitude     = "gratitude"
 	noteIdea          = "idea"
 	noteObservation   = "observation"
@@ -124,6 +125,7 @@ const (
 	noteRead          = "read"
 	noteListen        = "listen"
 	noteWatch         = "watch"
+	noteOther         = "other"
 )
 
 var Note = Category{
@@ -134,8 +136,23 @@ var Note = Category{
 			Slug:        noteUncategorized,
 			DisplayName: "Uncategorized",
 			Transitions: []Transition{
+				{Event: noteBookmark, Target: noteBookmark},
 				{Event: noteReference, Target: noteReference},
 				{Event: noteGratitude, Target: noteGratitude},
+				{Event: noteIdea, Target: noteIdea},
+				{Event: noteObservation, Target: noteObservation},
+				{Event: noteReflection, Target: noteReflection},
+				{Event: noteRead, Target: noteRead},
+				{Event: noteListen, Target: noteListen},
+				{Event: noteWatch, Target: noteWatch},
+				{Event: noteOther, Target: noteOther},
+			},
+		},
+		{
+			Slug:        noteBookmark,
+			DisplayName: "Bookmark",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
 			},
 		},
 		{
@@ -190,6 +207,13 @@ var Note = Category{
 		{
 			Slug:        noteWatch,
 			DisplayName: "Watch",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteOther,
+			DisplayName: "Other",
 			Transitions: []Transition{
 				{Event: "recategorize", Target: noteUncategorized},
 			},
