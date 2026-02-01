@@ -236,6 +236,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rcy/disco v0.2.2 h1:JcRP9kXK/JvAbPRIQZOWjdVceGe5ahWg253eVAkKLy0=
 github.com/rcy/disco v0.2.2/go.mod h1:4MELSLJPhFk1mLy4cWcMontGHYPuFor16PiRx4QcM1g=
+github.com/rcy/evoke v0.2.1 h1:oj3E2hanSC8D5xeGSm44m3JPOMLR3jmekDed7tCcPdk=
+github.com/rcy/evoke v0.2.1/go.mod h1:5I0I155F52Z+JsnlqbT+c1xRyzDNfbQvUPQwfgWFfBA=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
