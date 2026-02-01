@@ -639,7 +639,9 @@ func noteEl(note note.Note) g.Node {
 	return h.Div(h.ID(noteID(note)),
 		h.Div(
 			h.A(h.Href(noteLink(note)),
-				linkifyNode(note.Status+" "+note.Text)),
+				h.Div(h.Style("display:flex; gap:5px"),
+					h.Div(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
+					h.Div(linkifyNode(note.Text)))),
 		),
 		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
 			h.Div(h.Style("display:flex; gap:2px"),
@@ -647,6 +649,13 @@ func noteEl(note note.Note) g.Node {
 			),
 		),
 	)
+}
+
+func noteCategoryDisplay(n note.Note) string {
+	if len(notesmeta.Categories.Get(n.Category).Subcategories) == 1 {
+		return n.Category
+	}
+	return n.Subcategory + " " + n.Category
 }
 
 func deletedNoteEl(note note.Note) g.Node {
