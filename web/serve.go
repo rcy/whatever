@@ -269,14 +269,16 @@ func noteLinksEl(note note.Note) (g.Node, error) {
 
 	return h.Div(
 		g.Map(links, func(link string) g.Node {
-			embed, err := youtubeEmbed(link)
-			if err != nil {
-				h.Div(g.Text("error DKNh"))
-			}
+			if strings.Contains(link, "youtu") {
+				embed, err := youtubeEmbed(link)
+				if err != nil {
+					return h.Div(g.Text("error: " + err.Error()))
+				}
 
-			return h.Div(
-				h.Div(g.Text(link)),
-				embed)
+				return h.Div(embed)
+			} else {
+				return h.Div(g.Text(link))
+			}
 		})), nil
 }
 
