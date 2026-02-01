@@ -68,15 +68,15 @@ const (
 
 var Task = Category{
 	Slug:        "task",
-	DisplayName: "Task",
+	DisplayName: "Tasks",
 	Subcategories: SubcategoryList{
 		{
 			Slug:        taskUnscheduled,
 			DisplayName: "Unscheduled",
 			Transitions: []Transition{
 				{Event: "today", Target: taskNext},
-				{Event: "thisweek", Target: taskThisWeek},
-				{Event: "thismonth", Target: taskThisMonth},
+				{Event: "week", Target: taskThisWeek},
+				{Event: "month", Target: taskThisMonth},
 				{Event: "done", Target: taskDone},
 			},
 		},
@@ -90,7 +90,7 @@ var Task = Category{
 		},
 		{
 			Slug:        taskThisWeek,
-			DisplayName: "This Week",
+			DisplayName: "Week",
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -98,7 +98,7 @@ var Task = Category{
 		},
 		{
 			Slug:        taskThisMonth,
-			DisplayName: "This Month",
+			DisplayName: "Month",
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -130,7 +130,7 @@ const (
 
 var Note = Category{
 	Slug:        "reference",
-	DisplayName: "Note",
+	DisplayName: "Notes",
 	Subcategories: SubcategoryList{
 		{
 			Slug:        noteUncategorized,

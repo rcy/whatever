@@ -579,7 +579,7 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 	return h.Div(h.ID("header"),
 		h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
 			h.Div(h.Style("display:flex; gap:5px"),
-				h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
+				h.Div(h.Style("font-weight: bold"), g.Text("NOTNOW //")),
 				h.Div(h.Style("display: flex; gap: 5px"),
 					g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
 						text := fmt.Sprintf("%s", c.DisplayName)
