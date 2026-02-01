@@ -368,7 +368,7 @@ func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
 					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/people/%s", handle))))
 				}),
 			),
-			h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/people")))),
+			h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/people")))),
 		),
 		g.Map(notes, func(note note.Note) g.Node {
 			return noteEl(note)
@@ -582,7 +582,7 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 				h.Div(h.Style("font-weight: bold"), g.Text("Not Now")),
 				h.Div(h.Style("display: flex; gap: 5px"),
 					g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
-						text := fmt.Sprintf("[%s]", c.DisplayName)
+						text := fmt.Sprintf("%s", c.DisplayName)
 						if c.Slug == category {
 							return h.Div(
 								h.A(h.Style("font-weight: bold"),
@@ -607,7 +607,7 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 			h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
 				h.Div(h.Style("display: flex; gap: 5px"),
 					g.Map(notesmeta.Categories.Get(category).Subcategories, func(sub notesmeta.Subcategory) g.Node {
-						text := fmt.Sprintf("[%s]", g.Text(sub.DisplayName))
+						text := fmt.Sprintf("%s", g.Text(sub.DisplayName))
 						var style g.Node
 						if sub.Slug == subcategory {
 							style = h.Style("font-weight: bold")
@@ -615,7 +615,7 @@ func header(realmID uuid.UUID, realmList []realm.Realm, category string, subcate
 						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, sub.Slug))))
 					}),
 				),
-				h.Div(h.A(g.Text("[all]"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
+				h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
 			)),
 	)
 }
@@ -642,7 +642,7 @@ func noteEl(note note.Note) g.Node {
 		h.Div(
 			h.A(h.Href(noteLink(note)),
 				h.Span(
-					h.Span(h.Style("color:gray"), g.Text("["+noteCategoryDisplay(note)+"]")),
+					h.Span(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
 					h.Span(g.Raw("&nbsp;")),
 					h.Span(linkifyNode(note.Text)))),
 		),
