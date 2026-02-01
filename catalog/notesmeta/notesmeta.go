@@ -115,16 +115,84 @@ var Task = Category{
 }
 
 const (
-	referenceProcess = "process"
+	noteUncategorized = "process"
+	noteReference     = "reference"
+	noteGratitude     = "gratitude"
+	noteIdea          = "idea"
+	noteObservation   = "observation"
+	noteReflection    = "reflection"
+	noteRead          = "read"
+	noteListen        = "listen"
+	noteWatch         = "watch"
 )
 
-var Reference = Category{
+var Note = Category{
 	Slug:        "reference",
 	DisplayName: "Note",
 	Subcategories: SubcategoryList{
 		{
-			Slug:        referenceProcess,
-			DisplayName: "Process",
+			Slug:        noteUncategorized,
+			DisplayName: "Uncategorized",
+			Transitions: []Transition{
+				{Event: noteReference, Target: noteReference},
+				{Event: noteGratitude, Target: noteGratitude},
+			},
+		},
+		{
+			Slug:        noteReference,
+			DisplayName: "Remember",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteGratitude,
+			DisplayName: "Gratitude",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteIdea,
+			DisplayName: "Idea",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteObservation,
+			DisplayName: "Observation",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteReflection,
+			DisplayName: "Reflection",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteRead,
+			DisplayName: "Read",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteListen,
+			DisplayName: "Listen",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteWatch,
+			DisplayName: "Watch",
+			Transitions: []Transition{
+				{Event: "recategorize", Target: noteUncategorized},
+			},
 		},
 	},
 }
@@ -140,5 +208,5 @@ var People = Category{
 	},
 }
 
-var Categories = CategoryList{Inbox, Task, Reference, People}
-var RefileCategories = CategoryList{Inbox, Task, Reference}
+var Categories = CategoryList{Inbox, Task, Note, People}
+var RefileCategories = CategoryList{Inbox, Task, Note}
