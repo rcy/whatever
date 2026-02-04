@@ -131,7 +131,7 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 			NoteID:      uuid.New(),
 			Text:        signals.Body,
 			Category:    notesmeta.Inbox.Slug,
-			Subcategory: notesmeta.Inbox.DefaultSubcategory().Slug,
+			Subcategory: notesmeta.Inbox.Inbox().Slug,
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -179,9 +179,17 @@ func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategor
 		return nil, fmt.Errorf("inboxHeader: %w", err)
 	}
 
+	category := notesmeta.Categories.Get(viewCategory)
+	inboxNoteList, err := s.app.Notes.FindAllByCategoryAndSubcategory(owner.Id, category.Slug, category.Inbox().Slug)
+	if err != nil {
+		return nil, fmt.Errorf("FindAllByCategoryAndSubcategory: %w", err)
+	}
+	slices.Reverse(inboxNoteList)
+
 	return h.Div(
 		inbox,
 		greenHeader(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts),
+		h.Div(h.Style("background: #32cd3260; padding: 0 5px"), notes(inboxNoteList)),
 		pinkHeader(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts)), nil
 }
 
@@ -192,9 +200,13 @@ func (s *webservice) inboxHeader(owner string) (g.Node, error) {
 	}
 	slices.Reverse(noteList)
 
-	return h.Div(h.ID("inbox"), h.Style("background:yellow"),
-		inboxInput(),
-		notes(noteList)), nil
+	return h.Div(h.ID("inbox"), h.Style("background:#eeeeee"),
+		h.Div(h.Style("display:flex; gap:5px; padding:5px"),
+			h.Div(h.Style("font-weight:bold"), g.Text("NOTNOW //")),
+			h.Div(h.Style("flex:1"), inboxInput()),
+		),
+		h.Div(h.Style("padding: 0 5px"), notes(noteList)),
+	), nil
 }
 
 func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
@@ -304,21 +316,21 @@ func (s *webservice) notesIndexRedirect(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
-	category := chi.URLParam(r, "category")
-	subcategory := chi.URLParam(r, "subcategory")
+	categoryParam := chi.URLParam(r, "category")
+	subcategoryParam := chi.URLParam(r, "subcategory")
 	owner := getUserInfo(r)
 
 	var noteList []note.Note
 	var err error
 
-	if subcategory == "all" {
-		noteList, err = s.app.Notes.FindAllByCategory(owner.Id, category)
+	if subcategoryParam == "all" {
+		noteList, err = s.app.Notes.FindAllByCategory(owner.Id, categoryParam)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		noteList, err = s.app.Notes.FindAllByCategoryAndSubcategory(owner.Id, category, subcategory)
+		noteList, err = s.app.Notes.FindAllByCategoryAndSubcategory(owner.Id, categoryParam, subcategoryParam)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -326,7 +338,7 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
-	content, err := s.page(r, category, subcategory, notes(noteList))
+	content, err := s.page(r, categoryParam, subcategoryParam, notes(noteList))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -597,25 +609,29 @@ func greenHeader(category string, subcategory string, categoryCounts []note.Cate
 				}))))
 }
 
-func pinkHeader(category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
-	return g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
+func pinkHeader(categorySlug string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
+	category := notesmeta.Categories.Get(categorySlug)
+	return g.If(len(category.Subcategories) > 1,
 		h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
 			h.Div(h.Style("display: flex; gap: 5px"),
-				g.Map(notesmeta.Categories.Get(category).Subcategories, func(sub notesmeta.Subcategory) g.Node {
+				g.Map(category.Subcategories, func(sub notesmeta.Subcategory) g.Node {
+					if sub.Slug == category.Inbox().Slug {
+						return nil
+					}
 					text := fmt.Sprintf("%s", g.Text(sub.DisplayName))
 					var style g.Node
 					if sub.Slug == subcategory {
 						style = h.Style("font-weight: bold")
 					}
-					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, sub.Slug))))
+					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", categorySlug, sub.Slug))))
 				}),
 			),
-			h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
+			h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/%s/all", categorySlug)))),
 		))
 }
 
 func notes(noteList []note.Note) g.Node {
-	return h.Div(h.Style("display:flex; flex-direction:column; gap:10px"),
+	return h.Div(h.Style("display:flex; flex-direction:column; gap:10px; margin-bottom:1em"),
 		g.Map(noteList, func(note note.Note) g.Node {
 			return noteEl(note)
 		}),
@@ -665,7 +681,7 @@ func deletedNoteEl(note note.Note) g.Node {
 			h.A(h.Href(noteLink(note)),
 				linkifyNode(note.Status+" "+note.Text)),
 		),
-		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
+		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px"),
 			h.Div(h.Style("display:flex; gap:2px"),
 				undeleteButton(note.ID),
 			),

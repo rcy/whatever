@@ -123,7 +123,7 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("note already set to category: %s", categoryName)
 		}
 
-		subcategory := notesmeta.Categories.Get(categoryName).DefaultSubcategory()
+		subcategory := notesmeta.Categories.Get(categoryName).Inbox()
 
 		return []evoke.Event{
 			events.NoteCategoryChanged{

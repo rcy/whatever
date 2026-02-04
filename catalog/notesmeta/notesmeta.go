@@ -12,6 +12,13 @@ type Category struct {
 }
 
 func (c Category) DefaultSubcategory() Subcategory {
+	if len(c.Subcategories) == 1 {
+		return c.Subcategories[0]
+	}
+	return c.Subcategories[1]
+}
+
+func (c Category) Inbox() Subcategory {
 	return c.Subcategories[0]
 }
 
@@ -56,7 +63,7 @@ var Inbox = Category{
 	},
 }
 
-var DefaultCategory = Inbox
+var DefaultCategory = Task
 
 const (
 	taskNext        = "next"
