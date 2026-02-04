@@ -152,13 +152,13 @@ func (s *webservice) postNotesHandler(w http.ResponseWriter, r *http.Request) {
 	signals.Body = ""
 	sse.MarshalAndPatchSignals(signals)
 
-	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
+	inbox, err := s.inboxHeader(userInfo.Id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	sse.PatchElementGostar(headerEl)
+	sse.PatchElementGostar(inbox)
 }
 
 // Wrap ui header element with data fetching
@@ -174,9 +174,27 @@ func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategor
 		return nil, fmt.Errorf("Notes.SubcategoryCounts: %w", err)
 	}
 
+	inbox, err := s.inboxHeader(owner.Id)
+	if err != nil {
+		return nil, fmt.Errorf("inboxHeader: %w", err)
+	}
+
 	return h.Div(
+		inbox,
 		greenHeader(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts),
 		pinkHeader(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts)), nil
+}
+
+func (s *webservice) inboxHeader(owner string) (g.Node, error) {
+	noteList, err := s.app.Notes.FindAllByCategory(owner, notesmeta.Inbox.Slug)
+	if err != nil {
+		return nil, fmt.Errorf("FindAllByCategory: %w", err)
+	}
+	slices.Reverse(noteList)
+
+	return h.Div(h.ID("inbox"), h.Style("background:yellow"),
+		inboxInput(),
+		notes(noteList)), nil
 }
 
 func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
@@ -379,7 +397,6 @@ func (s *webservice) page(r *http.Request, category string, subcategory string, 
 			h.Div(g.Attr("data-signals", fmt.Sprintf("{viewCategory: '%s', viewSubcategory: '%s'}", category, subcategory))),
 			h.Div(h.Style("display:flex;flex-direction:column;gap:10px"),
 				h.Div(headerEl),
-				h.Div(input()),
 				h.Div(node),
 			),
 		),
@@ -549,23 +566,25 @@ func (s *webservice) postUndeleteNote(w http.ResponseWriter, r *http.Request) {
 	sse.PatchElementGostar(noteEl(note))
 }
 
-func input() g.Node {
+func inboxInput() g.Node {
 	return h.Form(h.ID("input-form"), g.Attr("data-on:submit", "@post('/dsnotes')"), h.Style("margin:0"),
 		h.Input(
 			g.Attr("data-bind", "body"),
 			h.Style("width:100%"),
-			h.Placeholder("add a note..."),
+			h.Placeholder("Add a note to inbox..."),
 			h.AutoFocus(),
 		),
 	)
 }
 
 func greenHeader(category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
-	return h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
+	return h.Div(h.Style("background: lime; padding: 5px; display:flex; gap: 20px"),
 		h.Div(h.Style("display:flex; gap:5px"),
-			h.Div(h.Style("font-weight: bold"), g.Text("NOTNOW //")),
 			h.Div(h.Style("display: flex; gap: 5px"),
 				g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
+					if c.Slug == notesmeta.Inbox.Slug {
+						return nil
+					}
 					text := fmt.Sprintf("%s", c.DisplayName)
 					if c.Slug == category {
 						return h.Div(
