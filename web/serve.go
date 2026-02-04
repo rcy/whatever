@@ -252,7 +252,8 @@ func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
 	actions := h.Div(
 		h.Div(h.A(g.Text("torrent"), h.Href("https://thepiratebay11.com/search/"+url.PathEscape(note.Text)))),
 		h.Div(h.A(g.Text("ddg"), h.Href("https://duckduckgo.com/?q="+url.QueryEscape(note.Text)))),
-		h.Div(h.A(g.Text("goog"), h.Href("https://www.youtube.com/results?search_query="+url.PathEscape(note.Text)))),
+		h.Div(h.A(g.Text("goog"), h.Href("https://www.google.com/search?q="+url.QueryEscape(note.Text)))),
+		h.Div(h.A(g.Text("yt"), h.Href("https://www.youtube.com/results?search_query="+url.PathEscape(note.Text)))),
 		h.Div(h.A(g.Text("wiki"), h.Href("https://en.wikipedia.org/w/index.php?title=Special:Search&search="+url.QueryEscape(note.Text)))),
 	)
 
