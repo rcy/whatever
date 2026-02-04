@@ -174,7 +174,9 @@ func (s *webservice) header(r *http.Request, viewCategory string, viewSubcategor
 		return nil, fmt.Errorf("Notes.SubcategoryCounts: %w", err)
 	}
 
-	return header(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts), nil
+	return h.Div(
+		greenHeader(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts),
+		pinkHeader(viewCategory, viewSubcategory, categoryCounts, subcategoryCounts)), nil
 }
 
 func (s *webservice) eventsIndex(w http.ResponseWriter, r *http.Request) {
@@ -558,39 +560,39 @@ func input() g.Node {
 	)
 }
 
-func header(category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
-	return h.Div(h.ID("header"),
-		h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
-			h.Div(h.Style("display:flex; gap:5px"),
-				h.Div(h.Style("font-weight: bold"), g.Text("NOTNOW //")),
-				h.Div(h.Style("display: flex; gap: 5px"),
-					g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
-						text := fmt.Sprintf("%s", c.DisplayName)
-						if c.Slug == category {
-							return h.Div(
-								h.A(h.Style("font-weight: bold"),
-									g.Text(text),
-									h.Href("/dsnotes/"+c.Slug)))
-						} else {
-							return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+c.Slug)))
-						}
-					})))),
+func greenHeader(category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
+	return h.Div(h.Style("background: lime; padding: 5px; display:flex; justify-content:space-between"),
+		h.Div(h.Style("display:flex; gap:5px"),
+			h.Div(h.Style("font-weight: bold"), g.Text("NOTNOW //")),
+			h.Div(h.Style("display: flex; gap: 5px"),
+				g.Map(notesmeta.Categories, func(c notesmeta.Category) g.Node {
+					text := fmt.Sprintf("%s", c.DisplayName)
+					if c.Slug == category {
+						return h.Div(
+							h.A(h.Style("font-weight: bold"),
+								g.Text(text),
+								h.Href("/dsnotes/"+c.Slug)))
+					} else {
+						return h.Div(h.A(g.Text(text), h.Href("/dsnotes/"+c.Slug)))
+					}
+				}))))
+}
 
-		g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
-			h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
-				h.Div(h.Style("display: flex; gap: 5px"),
-					g.Map(notesmeta.Categories.Get(category).Subcategories, func(sub notesmeta.Subcategory) g.Node {
-						text := fmt.Sprintf("%s", g.Text(sub.DisplayName))
-						var style g.Node
-						if sub.Slug == subcategory {
-							style = h.Style("font-weight: bold")
-						}
-						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, sub.Slug))))
-					}),
-				),
-				h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
-			)),
-	)
+func pinkHeader(category string, subcategory string, categoryCounts []note.CategoryCount, subcategoryCounts []note.SubcategoryCount) g.Node {
+	return g.If(len(notesmeta.Categories.Get(category).Subcategories) > 1,
+		h.Div(h.Style("background: pink; padding: 5px; display:flex; justify-content: space-between;"),
+			h.Div(h.Style("display: flex; gap: 5px"),
+				g.Map(notesmeta.Categories.Get(category).Subcategories, func(sub notesmeta.Subcategory) g.Node {
+					text := fmt.Sprintf("%s", g.Text(sub.DisplayName))
+					var style g.Node
+					if sub.Slug == subcategory {
+						style = h.Style("font-weight: bold")
+					}
+					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", category, sub.Slug))))
+				}),
+			),
+			h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/%s/all", category)))),
+		))
 }
 
 func notes(noteList []note.Note) g.Node {
