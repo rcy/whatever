@@ -12,15 +12,15 @@ import (
 )
 
 type Note struct {
-	ID          uuid.UUID  `db:"id"`
-	Owner       string     `db:"owner"`
-	Ts          time.Time  `db:"ts"`
-	Text        string     `db:"text"`
-	Category    string     `db:"category"`
-	Subcategory string     `db:"subcategory"`
-	Due         *time.Time `db:"due"`
-	State       string     `db:"state"`
-	Status      string     `db:"status"`
+	ID          uuid.UUID `db:"id"`
+	Owner       string    `db:"owner"`
+	Ts          time.Time `db:"ts"`
+	Text        string    `db:"text"`
+	Category    string    `db:"category"`
+	Subcategory string    `db:"subcategory"`
+	Due         any       `db:"due"`
+	State       string    `db:"state"`
+	Status      string    `db:"status"`
 }
 
 type Person struct {
@@ -57,7 +57,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 	switch e := evt.(type) {
 	case events.NoteCreated:
 		q := `insert into notes(id, owner, ts, text, category, subcategory, due, state, status) values(?,?,?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.Category, e.Subcategory, nil, "open", "")
+		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.Category, e.Subcategory, "doo", "open", "")
 		if err != nil {
 			return err
 		}
