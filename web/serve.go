@@ -27,6 +27,14 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
+var location = func() *time.Location {
+	loc, err := time.LoadLocation("America/Creston")
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}()
+
 //go:embed style.css
 var styles string
 
@@ -490,7 +498,7 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 
 	subcategory := notesmeta.Categories.Get(note.Category).Subcategories.Get(subcategoryParam)
 	if subcategory.DaysFn != nil {
-		today := notesmeta.Midnight(time.Now())
+		today := notesmeta.Midnight(time.Now().In(location))
 		due := today.AddDate(0, 0, subcategory.DaysFn())
 
 		err = s.app.Commander.Send(commands.SetNoteDue{NoteID: noteID, Due: due})

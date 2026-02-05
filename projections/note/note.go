@@ -138,7 +138,7 @@ func (p *Projection) FindAllPeople(owner string) ([]string, error) {
 	var handles []string
 	err := p.db.Select(&handles, `select distinct handle from note_people join notes on note_people.note_id = notes.id where owner = ?`, owner)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select notes 1: %w", err)
 	}
 	return handles, nil
 }
@@ -147,7 +147,7 @@ func (p *Projection) FindAll(owner string) ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where owner = ? order by ts asc`, owner)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select notes 2: %w", err)
 	}
 	return noteList, nil
 }
@@ -156,7 +156,7 @@ func (p *Projection) FindAllByPerson(owner string, handle string) ([]Note, error
 	var noteList []Note
 	err := p.db.Select(&noteList, `select notes.* from notes join note_people on note_people.note_id = notes.id where owner = ? and handle = ? order by ts asc`, owner, handle)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select notes 3: %w", err)
 	}
 	return noteList, nil
 }
@@ -165,7 +165,7 @@ func (p *Projection) FindAllWithMention(owner string) ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select distinct notes.* from notes join note_people on note_people.note_id = notes.id where owner = ? order by ts asc`, owner)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select notes 4: %w", err)
 	}
 	return noteList, nil
 }
@@ -174,7 +174,7 @@ func (p *Projection) FindAllByCategory(owner string, category string) ([]Note, e
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where owner = ? and category = ? order by ts asc`, owner, category)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select notes 5: %w", err)
 	}
 	return noteList, nil
 }
@@ -183,7 +183,7 @@ func (p *Projection) FindAllByCategoryAndSubcategory(owner string, category stri
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where owner = ? and category = ? and subcategory = ? order by ts asc`, owner, category, subcategory)
 	if err != nil {
-		return nil, fmt.Errorf("Select notes: %w", err)
+		return nil, fmt.Errorf("Select notes 6: %w", err)
 	}
 	return noteList, nil
 }
