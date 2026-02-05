@@ -57,7 +57,7 @@ func newSessionManager(secret string) (*sessionManager, error) {
 func (s *sessionManager) issue(w http.ResponseWriter, r *http.Request, userInfo googleoauth.Userinfo, secure bool) error {
 	payload := sessionPayload{
 		UserInfo:  userInfo,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt: time.Now().Add(365 * 24 * time.Hour),
 	}
 	token, err := s.sign(payload)
 	if err != nil {
