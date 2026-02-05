@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -433,6 +434,12 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = s.app.Commander.Send(commands.ClearNoteDue{NoteID: noteID})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	err = s.app.Commander.Send(commands.SetNoteCategory{NoteID: noteID, Category: categoryName})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -460,7 +467,7 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 
 func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "noteID")
-	subcategory := chi.URLParam(r, "subcategory")
+	subcategoryParam := chi.URLParam(r, "subcategory")
 
 	var signals signals
 	err := datastar.ReadSignals(r, &signals)
@@ -475,7 +482,31 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.app.Commander.Send(commands.SetNoteSubcategory{NoteID: noteID, Subcategory: subcategory})
+	note, err := s.app.Notes.FindOne(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	subcategory := notesmeta.Categories.Get(note.Category).Subcategories.Get(subcategoryParam)
+	if subcategory.DaysFn != nil {
+		today := notesmeta.Midnight(time.Now())
+		due := today.AddDate(0, 0, subcategory.DaysFn())
+
+		err = s.app.Commander.Send(commands.SetNoteDue{NoteID: noteID, Due: due})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if note.Due != nil {
+		err = s.app.Commander.Send(commands.ClearNoteDue{NoteID: noteID})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	err = s.app.Commander.Send(commands.SetNoteSubcategory{NoteID: noteID, Subcategory: subcategory.Slug})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -490,7 +521,7 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElementGostar(headerEl)
 
-	note, err := s.app.Notes.FindOne(noteID.String())
+	note, err = s.app.Notes.FindOne(noteID.String())
 	if err != nil {
 		sse.ConsoleError(err)
 		return
@@ -655,7 +686,11 @@ func noteEl(note note.Note) g.Node {
 				h.Span(
 					h.Span(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
 					h.Span(g.Raw("&nbsp;")),
-					h.Span(linkifyNode(note.Text)))),
+					h.Span(linkifyNode(note.Text)),
+					g.Iff(note.Due != nil, func() g.Node {
+						return h.Span(g.Text(" " + note.Due.Format(time.DateOnly)))
+					}),
+				)),
 		),
 		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
 			h.Div(h.Style("display:flex; gap:2px"),

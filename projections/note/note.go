@@ -12,14 +12,15 @@ import (
 )
 
 type Note struct {
-	ID          uuid.UUID `db:"id"`
-	Owner       string    `db:"owner"`
-	Ts          time.Time `db:"ts"`
-	Text        string    `db:"text"`
-	Category    string    `db:"category"`
-	Subcategory string    `db:"subcategory"`
-	State       string    `db:"state"`
-	Status      string    `db:"status"`
+	ID          uuid.UUID  `db:"id"`
+	Owner       string     `db:"owner"`
+	Ts          time.Time  `db:"ts"`
+	Text        string     `db:"text"`
+	Category    string     `db:"category"`
+	Subcategory string     `db:"subcategory"`
+	Due         *time.Time `db:"due"`
+	State       string     `db:"state"`
+	Status      string     `db:"status"`
 }
 
 type Person struct {
@@ -35,11 +36,11 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, state not null, status not null)`)
+	_, err = db.Exec(`create table notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, due timestamp, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, state not null, status not null)`)
+	_, err = db.Exec(`create table deleted_notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, due timestamp, state not null, status not null)`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
@@ -73,7 +74,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 			return err
 		}
 	case events.NoteDeleted:
-		q := `insert into deleted_notes(id, owner, ts, text, category, subcategory, state, status) select id, owner, ts, text, category, subcategory, state, status from notes where id = ?`
+		q := `insert into deleted_notes(id, owner, ts, text, category, subcategory, due, state, status) select id, owner, ts, text, category, subcategory, due, state, status from notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -86,7 +87,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 
 		return err
 	case events.NoteUndeleted:
-		q := `insert into notes(id, owner, ts, text, category, subcategory, state, status) select id, owner, ts, text, category, subcategory, state, status from deleted_notes where id = ?`
+		q := `insert into notes(id, owner, ts, text, category, subcategory, due, state, status) select id, owner, ts, text, category, subcategory, due, state, status from deleted_notes where id = ?`
 		_, err := p.db.Exec(q, e.NoteID)
 		if err != nil {
 			return err
@@ -102,6 +103,12 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		return err
 	case events.NoteSubcategoryChanged:
 		_, err := p.db.Exec(`update notes set subcategory = ? where id = ?`, e.Subcategory, e.NoteID)
+		return err
+	case events.NoteDueChanged:
+		_, err := p.db.Exec(`update notes set due = ? where id = ?`, e.Due, e.NoteID)
+		return err
+	case events.NoteDueCleared:
+		_, err := p.db.Exec(`update notes set due = null where id = ?`, e.NoteID)
 		return err
 	case events.NoteEnrichmentRequested:
 		_, err := p.db.Exec(`update notes set status = 'enriching' where id = ?`, e.NoteID)

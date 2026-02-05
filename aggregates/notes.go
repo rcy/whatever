@@ -19,6 +19,7 @@ type noteAggregate struct {
 	text        string
 	category    string
 	subcategory string
+	due         *time.Time
 }
 
 func NewNoteAggregate(id uuid.UUID) *noteAggregate {
@@ -141,6 +142,15 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			NoteID:      aggregateID,
 			Subcategory: subcategory,
 		}}, nil
+	case commands.SetNoteDue:
+		return []evoke.Event{events.NoteDueChanged{
+			NoteID: aggregateID,
+			Due:    c.Due,
+		}}, nil
+	case commands.ClearNoteDue:
+		return []evoke.Event{events.NoteDueCleared{
+			NoteID: aggregateID,
+		}}, nil
 	case commands.CompleteNoteEnrichment:
 		return []evoke.Event{events.NoteEnriched{
 			NoteID: aggregateID,
@@ -173,6 +183,10 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 		a.category = evt.Category
 	case events.NoteSubcategoryChanged:
 		a.subcategory = evt.Subcategory
+	case events.NoteDueChanged:
+		a.due = &evt.Due
+	case events.NoteDueCleared:
+		a.due = nil
 	case events.NoteEnrichmentRequested:
 	case events.NoteEnriched:
 	case events.NoteEnrichmentFailed:

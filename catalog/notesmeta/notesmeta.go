@@ -2,6 +2,7 @@ package notesmeta
 
 import (
 	"slices"
+	"time"
 )
 
 type Category struct {
@@ -31,6 +32,7 @@ type Subcategory struct {
 	Slug        string
 	DisplayName string
 	Transitions []Transition
+	DaysFn      func() int
 }
 
 type CategoryList []Category
@@ -66,10 +68,13 @@ var Inbox = Category{
 var DefaultCategory = Task
 
 const (
-	taskNext        = "next"
+	taskToday       = "next"
+	taskTomorrow    = "tomorrow"
 	taskUnscheduled = "notnow"
 	taskThisWeek    = "thisweek"
+	taskNextWeek    = "nextweek"
 	taskThisMonth   = "thismonth"
+	taskNextMonth   = "nextmonth"
 	taskDone        = "done"
 )
 
@@ -81,15 +86,28 @@ var Task = Category{
 			Slug:        taskUnscheduled,
 			DisplayName: "Unscheduled",
 			Transitions: []Transition{
-				{Event: "today", Target: taskNext},
-				{Event: "week", Target: taskThisWeek},
-				{Event: "month", Target: taskThisMonth},
+				{Event: "today", Target: taskToday},
+				{Event: "tommorow", Target: taskTomorrow},
+				{Event: "thisweek", Target: taskThisWeek},
+				{Event: "nextweek", Target: taskNextWeek},
+				{Event: "thismonth", Target: taskThisMonth},
+				{Event: "nextmonth", Target: taskNextMonth},
 				{Event: "done", Target: taskDone},
 			},
 		},
 		{
-			Slug:        taskNext,
+			Slug:        taskToday,
 			DisplayName: "Today",
+			DaysFn:      func() int { return 1 },
+			Transitions: []Transition{
+				{Event: "reschedule", Target: taskUnscheduled},
+				{Event: "done", Target: taskDone},
+			},
+		},
+		{
+			Slug:        taskTomorrow,
+			DisplayName: "Tomorrow",
+			DaysFn:      func() int { return 2 },
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -97,7 +115,17 @@ var Task = Category{
 		},
 		{
 			Slug:        taskThisWeek,
-			DisplayName: "Week",
+			DisplayName: "ThisWeek",
+			DaysFn:      func() int { return int(7 - time.Now().Weekday()) },
+			Transitions: []Transition{
+				{Event: "reschedule", Target: taskUnscheduled},
+				{Event: "done", Target: taskDone},
+			},
+		},
+		{
+			Slug:        taskNextWeek,
+			DisplayName: "NextWeek",
+			DaysFn:      func() int { return 7 + int(7-time.Now().Weekday()) },
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -105,7 +133,21 @@ var Task = Category{
 		},
 		{
 			Slug:        taskThisMonth,
-			DisplayName: "Month",
+			DisplayName: "ThisMonth",
+			DaysFn: func() int {
+				return remainingDaysInMonth(time.Now(), 1)
+			},
+			Transitions: []Transition{
+				{Event: "reschedule", Target: taskUnscheduled},
+				{Event: "done", Target: taskDone},
+			},
+		},
+		{
+			Slug:        taskNextMonth,
+			DisplayName: "NextMonth",
+			DaysFn: func() int {
+				return remainingDaysInMonth(time.Now(), 2)
+			},
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -113,9 +155,9 @@ var Task = Category{
 		},
 		{
 			Slug:        taskDone,
-			DisplayName: "Done!",
+			DisplayName: "Done",
 			Transitions: []Transition{
-				{Event: "undo", Target: taskNext},
+				{Event: "undo", Target: taskToday},
 			},
 		},
 	},

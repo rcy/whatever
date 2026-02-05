@@ -56,6 +56,15 @@ type NoteSubcategoryChanged struct {
 	Subcategory string
 }
 
+type NoteDueChanged struct {
+	NoteID uuid.UUID
+	Due    time.Time
+}
+
+type NoteDueCleared struct {
+	NoteID uuid.UUID
+}
+
 type NoteTaskCompleted struct {
 	NoteID uuid.UUID
 }
