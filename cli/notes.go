@@ -51,7 +51,7 @@ func (c *ShowCmd) Run(app *app.App) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s %s %s\n", note.ID[0:7], note.Ts.Local().Format(time.DateTime), note.Text)
+	fmt.Printf("%s %s %s\n", note.ID[0:7], time.Unix(note.Ts, 0).Local().Format(time.DateTime), note.Text)
 	return nil
 }
 

@@ -2,7 +2,6 @@ package note
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -14,11 +13,11 @@ import (
 type Note struct {
 	ID          uuid.UUID `db:"id"`
 	Owner       string    `db:"owner"`
-	Ts          time.Time `db:"ts"`
+	Ts          int64     `db:"ts"`
 	Text        string    `db:"text"`
 	Category    string    `db:"category"`
 	Subcategory string    `db:"subcategory"`
-	Due         any       `db:"due"`
+	Due         *int64    `db:"due"`
 	State       string    `db:"state"`
 	Status      string    `db:"status"`
 }
@@ -36,16 +35,16 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, due timestamp, state not null, status not null)`)
+	_, err = db.Exec(`create table notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id not null unique, owner not null, ts timestamp not null, text not null, category not null, subcategory not null, due timestamp, state not null, status not null)`)
+	_, err = db.Exec(`create table deleted_notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
 
-	_, err = db.Exec(`create table note_people(handle string, note_id string)`)
+	_, err = db.Exec(`create table note_people(handle text, note_id text) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table note_people: %w", err)
 	}
@@ -57,9 +56,9 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 	switch e := evt.(type) {
 	case events.NoteCreated:
 		q := `insert into notes(id, owner, ts, text, category, subcategory, due, state, status) values(?,?,?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt, e.Text, e.Category, e.Subcategory, "doo", "open", "")
+		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt.UTC().Unix(), e.Text, e.Category, e.Subcategory, 0, "open", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("Exec: %w", err)
 		}
 
 		for _, mention := range extractMentions(e.Text) {
@@ -105,7 +104,7 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		_, err := p.db.Exec(`update notes set subcategory = ? where id = ?`, e.Subcategory, e.NoteID)
 		return err
 	case events.NoteDueChanged:
-		_, err := p.db.Exec(`update notes set due = ? where id = ?`, e.Due, e.NoteID)
+		_, err := p.db.Exec(`update notes set due = ? where id = ?`, e.Due.UTC().Unix(), e.NoteID)
 		return err
 	case events.NoteDueCleared:
 		_, err := p.db.Exec(`update notes set due = null where id = ?`, e.NoteID)
