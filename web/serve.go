@@ -497,22 +497,22 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	subcategory := notesmeta.Categories.Get(note.Category).Subcategories.Get(subcategoryParam)
-	// if subcategory.DaysFn != nil {
-	// 	today := notesmeta.Midnight(time.Now().In(location))
-	// 	due := today.AddDate(0, 0, subcategory.DaysFn())
+	if subcategory.DaysFn != nil {
+		today := notesmeta.Midnight(time.Now().In(location))
+		due := today.AddDate(0, 0, subcategory.DaysFn())
 
-	// 	err = s.app.Commander.Send(commands.SetNoteDue{NoteID: noteID, Due: due})
-	// 	if err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// } else if note.Due != nil {
-	// 	err = s.app.Commander.Send(commands.ClearNoteDue{NoteID: noteID})
-	// 	if err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// }
+		err = s.app.Commander.Send(commands.SetNoteDue{NoteID: noteID, Due: due})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if note.Due != nil {
+		err = s.app.Commander.Send(commands.ClearNoteDue{NoteID: noteID})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
 	err = s.app.Commander.Send(commands.SetNoteSubcategory{NoteID: noteID, Subcategory: subcategory.Slug})
 	if err != nil {
@@ -695,9 +695,9 @@ func noteEl(note note.Note) g.Node {
 					h.Span(h.Style("color:gray"), g.Text(noteCategoryDisplay(note))),
 					h.Span(g.Raw("&nbsp;")),
 					h.Span(linkifyNode(note.Text)),
-					// g.Iff(note.Due != nil, func() g.Node {
-					// 	return h.Span(g.Text(" " + note.Due.Format(time.DateOnly)))
-					// }),
+					g.Iff(note.Due != nil, func() g.Node {
+						return h.Span(g.Text(" " + time.Unix(*note.Due, 0).Format(time.DateOnly)))
+					}),
 				)),
 		),
 		h.Div(h.Style("color: gray; font-size: 70%; margin-top: -3px;"),
