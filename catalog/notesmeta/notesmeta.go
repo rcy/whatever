@@ -75,6 +75,7 @@ const (
 	taskNextWeek    = "nextweek"
 	taskThisMonth   = "thismonth"
 	taskNextMonth   = "nextmonth"
+	taskLater       = "later"
 	taskDone        = "done"
 )
 
@@ -92,6 +93,7 @@ var Task = Category{
 				{Event: "nextweek", Target: taskNextWeek},
 				{Event: "thismonth", Target: taskThisMonth},
 				{Event: "nextmonth", Target: taskNextMonth},
+				{Event: "later", Target: taskLater},
 				{Event: "done", Target: taskDone},
 			},
 		},
@@ -148,6 +150,14 @@ var Task = Category{
 			DaysFn: func() int {
 				return remainingDaysInMonth(time.Now(), 2)
 			},
+			Transitions: []Transition{
+				{Event: "reschedule", Target: taskUnscheduled},
+				{Event: "done", Target: taskDone},
+			},
+		},
+		{
+			Slug:        taskLater,
+			DisplayName: "Later",
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
