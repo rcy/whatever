@@ -20,3 +20,11 @@ release:
 
 tags:
 	git tag --list | tail
+
+pull-prod:
+	curl https://notnow.fly.dev
+	rm -rf ./data
+	mkdir ./data
+	fly sftp get /data/notnow_evoke.db ./data/notnow_evoke.db
+	fly sftp get /data/notnow_evoke.db-shm ./data/notnow_evoke.db-shm
+	fly sftp get /data/notnow_evoke.db-wal ./data/notnow_evoke.db-wal
