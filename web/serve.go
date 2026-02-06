@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"slices"
@@ -696,7 +697,8 @@ func noteEl(note note.Note) g.Node {
 					h.Span(g.Raw("&nbsp;")),
 					h.Span(linkifyNode(note.Text)),
 					g.Iff(note.Due != nil, func() g.Node {
-						return h.Span(g.Text(" " + time.Unix(*note.Due, 0).Format(time.DateOnly)))
+						until := float64(time.Until(time.Unix(*note.Due, 0))) / float64(24*time.Hour)
+						return h.Span(g.Text(fmt.Sprintf(" %.0fd", math.Ceil(until))))
 					}),
 				)),
 		),
