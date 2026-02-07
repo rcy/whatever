@@ -697,8 +697,8 @@ func noteEl(note note.Note) g.Node {
 					h.Span(g.Raw("&nbsp;")),
 					h.Span(linkifyNode(note.Text)),
 					g.Iff(note.Due != nil, func() g.Node {
-						until := float64(time.Until(time.Unix(*note.Due, 0))) / float64(24*time.Hour)
-						return h.Span(g.Text(fmt.Sprintf(" %.0fd", math.Ceil(until))))
+						until := int(math.Ceil(float64(time.Until(time.Unix(*note.Due, 0)))/float64(24*time.Hour) - 1))
+						return h.Span(g.Text(fmt.Sprintf(" %dd", until)))
 					}),
 				)),
 		),
