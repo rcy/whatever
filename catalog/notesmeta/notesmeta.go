@@ -118,7 +118,7 @@ var Task = Category{
 		{
 			Slug:        taskThisWeek,
 			DisplayName: "ThisWeek",
-			DaysFn:      func() int { return int(7 - time.Now().Weekday()) },
+			DaysFn:      func() int { return int(6 - time.Now().Weekday()) },
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -127,7 +127,7 @@ var Task = Category{
 		{
 			Slug:        taskNextWeek,
 			DisplayName: "NextWeek",
-			DaysFn:      func() int { return 7 + int(7-time.Now().Weekday()) },
+			DaysFn:      func() int { return 7 + int(6-time.Now().Weekday()) },
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
