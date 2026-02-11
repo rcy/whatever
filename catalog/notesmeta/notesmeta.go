@@ -24,13 +24,15 @@ func (c Category) Inbox() Subcategory {
 }
 
 type Transition struct {
-	Event  string
-	Target string
+	Event        string
+	Target       string
+	DaysUntilDue func() int
 }
 
 type Subcategory struct {
 	Slug        string
 	DisplayName string
+	Timeframes  []Timeframe
 	Transitions []Transition
 	DaysFn      func() int
 }
@@ -68,15 +70,26 @@ var Inbox = Category{
 var DefaultCategory = Task
 
 const (
-	taskToday       = "next"
-	taskTomorrow    = "tomorrow"
 	taskUnscheduled = "notnow"
-	taskThisWeek    = "thisweek"
-	taskNextWeek    = "nextweek"
-	taskThisMonth   = "thismonth"
-	taskNextMonth   = "nextmonth"
+	taskScheduled   = "scheduled"
 	taskLater       = "later"
 	taskDone        = "done"
+)
+
+type Timeframe struct {
+	Slug        string
+	EventName   string
+	DisplayName string
+	Days        func() int
+}
+
+var (
+	Today     = Timeframe{Slug: "today", EventName: "today", DisplayName: "Today", Days: func() int { return 1 }}
+	Tomorrow  = Timeframe{Slug: "tomorrow", EventName: "tommorow", DisplayName: "Tomorrow", Days: func() int { return 2 }}
+	ThisWeek  = Timeframe{Slug: "thisweek", EventName: "thisweek", DisplayName: "ThisWeek", Days: func() int { return int(6 - time.Now().Weekday()) }}
+	NextWeek  = Timeframe{Slug: "nextweek", EventName: "nextweek", DisplayName: "NextWeek", Days: func() int { return 7 + int(6-time.Now().Weekday()) }}
+	ThisMonth = Timeframe{Slug: "thismonth", EventName: "thismonth", DisplayName: "ThisMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 1) }}
+	NextMonth = Timeframe{Slug: "nextmonth", EventName: "nextmonth", DisplayName: "NextMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 2) }}
 )
 
 var Task = Category{
@@ -87,69 +100,50 @@ var Task = Category{
 			Slug:        taskUnscheduled,
 			DisplayName: "Unscheduled",
 			Transitions: []Transition{
-				{Event: "today", Target: taskToday},
-				{Event: "tommorow", Target: taskTomorrow},
-				{Event: "thisweek", Target: taskThisWeek},
-				{Event: "nextweek", Target: taskNextWeek},
-				{Event: "thismonth", Target: taskThisMonth},
-				{Event: "nextmonth", Target: taskNextMonth},
-				{Event: "later", Target: taskLater},
-				{Event: "done", Target: taskDone},
+				{
+					Event:        Today.EventName,
+					Target:       taskScheduled,
+					DaysUntilDue: Today.Days,
+				},
+				{
+					Event:        Tomorrow.EventName,
+					Target:       taskScheduled,
+					DaysUntilDue: Tomorrow.Days,
+				},
+				{
+					Event:        ThisWeek.EventName,
+					Target:       taskScheduled,
+					DaysUntilDue: ThisWeek.Days,
+				},
+				{
+					Event:        NextWeek.EventName,
+					Target:       taskScheduled,
+					DaysUntilDue: NextWeek.Days,
+				},
+				{
+					Event:        ThisMonth.EventName,
+					Target:       taskScheduled,
+					DaysUntilDue: ThisMonth.Days,
+				},
+				{
+					Event:        NextMonth.EventName,
+					Target:       taskScheduled,
+					DaysUntilDue: NextMonth.Days,
+				},
+				{
+					Event:  "later",
+					Target: taskLater,
+				},
+				{
+					Event:  "done",
+					Target: taskDone,
+				},
 			},
 		},
 		{
-			Slug:        taskToday,
-			DisplayName: "Today",
-			DaysFn:      func() int { return 1 },
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
-			},
-		},
-		{
-			Slug:        taskTomorrow,
-			DisplayName: "Tomorrow",
-			DaysFn:      func() int { return 2 },
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
-			},
-		},
-		{
-			Slug:        taskThisWeek,
-			DisplayName: "ThisWeek",
-			DaysFn:      func() int { return int(6 - time.Now().Weekday()) },
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
-			},
-		},
-		{
-			Slug:        taskNextWeek,
-			DisplayName: "NextWeek",
-			DaysFn:      func() int { return 7 + int(6-time.Now().Weekday()) },
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
-			},
-		},
-		{
-			Slug:        taskThisMonth,
-			DisplayName: "ThisMonth",
-			DaysFn: func() int {
-				return remainingDaysInMonth(time.Now(), 1)
-			},
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
-			},
-		},
-		{
-			Slug:        taskNextMonth,
-			DisplayName: "NextMonth",
-			DaysFn: func() int {
-				return remainingDaysInMonth(time.Now(), 2)
-			},
+			Slug:        taskScheduled,
+			DisplayName: "Scheduled",
+			Timeframes:  []Timeframe{Today, Tomorrow, ThisWeek, NextWeek, ThisMonth, NextMonth},
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -157,7 +151,7 @@ var Task = Category{
 		},
 		{
 			Slug:        taskLater,
-			DisplayName: "Later",
+			DisplayName: "Someday",
 			Transitions: []Transition{
 				{Event: "reschedule", Target: taskUnscheduled},
 				{Event: "done", Target: taskDone},
@@ -167,7 +161,7 @@ var Task = Category{
 			Slug:        taskDone,
 			DisplayName: "Done",
 			Transitions: []Transition{
-				{Event: "undo", Target: taskToday},
+				{Event: "undo", Target: taskUnscheduled},
 			},
 		},
 	},

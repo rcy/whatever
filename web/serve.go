@@ -105,6 +105,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 		r.Get("/dsnotes/{category}", svc.notesIndexRedirect)
 		r.Get("/dsnotes/{category}/{subcategory}", svc.notesIndex)
+		r.Get("/dsnotes/{category}/{subcategory}/{timeframe}", svc.notesIndex)
 
 		r.Get("/dsnotes/people", svc.notesPeople)
 		r.Get("/dsnotes/people/{handle}", svc.notesPeople)
@@ -349,12 +350,20 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(noteList)
 
+	timeframe := chi.URLParam(r, "timeframe")
+	fmt.Println(getTimeInterval(timeframe))
+
 	content, err := s.page(r, categoryParam, subcategoryParam, notes(noteList))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	content.Render(w)
+}
+
+func getTimeInterval(timeframe string) (int, int, error) {
+	fmt.Println(notesmeta.Task.Subcategories.Get("unscheduled").Transitions)
+	return 0, 1, nil
 }
 
 func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {
@@ -659,12 +668,19 @@ func pinkHeader(categorySlug string, subcategory string, categoryCounts []note.C
 					if sub.Slug == category.Inbox().Slug {
 						return nil
 					}
-					text := fmt.Sprintf("%s", g.Text(sub.DisplayName))
-					var style g.Node
-					if sub.Slug == subcategory {
-						style = h.Style("font-weight: bold")
+					if len(sub.Timeframes) > 0 {
+						return g.Group{g.Map(sub.Timeframes, func(tf notesmeta.Timeframe) g.Node {
+							style := h.Style("")
+							return h.Div(h.A(style, g.Text(tf.DisplayName), h.Href(fmt.Sprintf("/dsnotes/%s/%s/%s", categorySlug, sub.Slug, tf.Slug))))
+						})}
+					} else {
+						text := fmt.Sprintf("%s", g.Text(sub.DisplayName))
+						var style g.Node
+						if sub.Slug == subcategory {
+							style = h.Style("font-weight: bold")
+						}
+						return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", categorySlug, sub.Slug))))
 					}
-					return h.Div(h.A(style, g.Text(text), h.Href(fmt.Sprintf("/dsnotes/%s/%s", categorySlug, sub.Slug))))
 				}),
 			),
 			h.Div(h.A(g.Text("all"), h.Href(fmt.Sprintf("/dsnotes/%s/all", categorySlug)))),
