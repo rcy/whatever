@@ -58,7 +58,7 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.UndeleteNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.UpdateNoteText{}, noteHandler)
 	commandBus.RegisterHandler(commands.SetNoteCategory{}, noteHandler)
-	commandBus.RegisterHandler(commands.SetNoteSubcategory{}, noteHandler)
+	commandBus.RegisterHandler(commands.TransitionNoteSubcategory{}, noteHandler)
 	commandBus.RegisterHandler(commands.SetNoteDue{}, noteHandler)
 	commandBus.RegisterHandler(commands.ClearNoteDue{}, noteHandler)
 	commandBus.RegisterHandler(commands.CompleteNoteEnrichment{}, noteHandler)

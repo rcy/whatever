@@ -12,6 +12,14 @@ import (
 	"github.com/rcy/whatever/events"
 )
 
+var location = func() *time.Location {
+	loc, err := time.LoadLocation("America/Creston")
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}()
+
 type noteAggregate struct {
 	id          uuid.UUID
 	owner       string
@@ -133,15 +141,30 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 				Subcategory: string(subcategory.Slug),
 			},
 		}, nil
-	case commands.SetNoteSubcategory:
-		subcategory := strings.TrimSpace(c.Subcategory)
-		if a.subcategory == subcategory {
+	case commands.TransitionNoteSubcategory:
+		transitionEvent := strings.TrimSpace(c.TransitionEvent)
+		subcategory := notesmeta.Categories.Get(a.category).Subcategories.Get(a.subcategory)
+		ok, transition := subcategory.Transitions.Get(transitionEvent)
+		if !ok {
+			return nil, fmt.Errorf("invalid transition event %s", c.TransitionEvent)
+		}
+
+		if a.subcategory == transition.TargetSlug {
 			return nil, fmt.Errorf("note already set to subcategory: %s", subcategory)
 		}
-		return []evoke.Event{events.NoteSubcategoryChanged{
+		eventList := []evoke.Event{events.NoteSubcategoryChanged{
 			NoteID:      aggregateID,
-			Subcategory: subcategory,
-		}}, nil
+			Subcategory: transition.TargetSlug,
+		}}
+
+		if transition.DaysUntilDue != nil {
+			due := notesmeta.Midnight(time.Now().In(location)).AddDate(0, 0, transition.DaysUntilDue())
+			eventList = append(eventList, events.NoteDueChanged{NoteID: aggregateID, Due: due})
+		} else if a.due != nil {
+			eventList = append(eventList, events.NoteDueCleared{NoteID: aggregateID})
+		}
+
+		return eventList, nil
 	case commands.SetNoteDue:
 		return []evoke.Event{events.NoteDueChanged{
 			NoteID: aggregateID,

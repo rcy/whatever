@@ -49,12 +49,12 @@ type SetNoteCategory struct {
 
 func (c SetNoteCategory) AggregateID() uuid.UUID { return c.NoteID }
 
-type SetNoteSubcategory struct {
-	NoteID      uuid.UUID
-	Subcategory string
+type TransitionNoteSubcategory struct {
+	NoteID          uuid.UUID
+	TransitionEvent string
 }
 
-func (c SetNoteSubcategory) AggregateID() uuid.UUID { return c.NoteID }
+func (c TransitionNoteSubcategory) AggregateID() uuid.UUID { return c.NoteID }
 
 type SetNoteDue struct {
 	NoteID uuid.UUID

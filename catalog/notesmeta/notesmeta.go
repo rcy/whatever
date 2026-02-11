@@ -25,7 +25,7 @@ func (c Category) Inbox() Subcategory {
 
 type Transition struct {
 	Event        string
-	Target       string
+	TargetSlug   string
 	DaysUntilDue func() int
 }
 
@@ -33,8 +33,7 @@ type Subcategory struct {
 	Slug        string
 	DisplayName string
 	Timeframes  []Timeframe
-	Transitions []Transition
-	DaysFn      func() int
+	Transitions TransitionList
 }
 
 type CategoryList []Category
@@ -55,6 +54,17 @@ func (l SubcategoryList) Get(slug string) Subcategory {
 		i = 0
 	}
 	return l[i]
+}
+
+type TransitionList []Transition
+
+// Return transition by event name
+func (l TransitionList) Get(event string) (bool, Transition) {
+	i := slices.IndexFunc(l, func(t Transition) bool { return t.Event == event })
+	if i == -1 {
+		return false, Transition{}
+	}
+	return true, l[i]
 }
 
 var Inbox = Category{
@@ -99,44 +109,44 @@ var Task = Category{
 		{
 			Slug:        taskUnscheduled,
 			DisplayName: "Unscheduled",
-			Transitions: []Transition{
+			Transitions: TransitionList{
 				{
 					Event:        Today.EventName,
-					Target:       taskScheduled,
+					TargetSlug:   taskScheduled,
 					DaysUntilDue: Today.Days,
 				},
 				{
 					Event:        Tomorrow.EventName,
-					Target:       taskScheduled,
+					TargetSlug:   taskScheduled,
 					DaysUntilDue: Tomorrow.Days,
 				},
 				{
 					Event:        ThisWeek.EventName,
-					Target:       taskScheduled,
+					TargetSlug:   taskScheduled,
 					DaysUntilDue: ThisWeek.Days,
 				},
 				{
 					Event:        NextWeek.EventName,
-					Target:       taskScheduled,
+					TargetSlug:   taskScheduled,
 					DaysUntilDue: NextWeek.Days,
 				},
 				{
 					Event:        ThisMonth.EventName,
-					Target:       taskScheduled,
+					TargetSlug:   taskScheduled,
 					DaysUntilDue: ThisMonth.Days,
 				},
 				{
 					Event:        NextMonth.EventName,
-					Target:       taskScheduled,
+					TargetSlug:   taskScheduled,
 					DaysUntilDue: NextMonth.Days,
 				},
 				{
-					Event:  "later",
-					Target: taskLater,
+					Event:      "later",
+					TargetSlug: taskLater,
 				},
 				{
-					Event:  "done",
-					Target: taskDone,
+					Event:      "done",
+					TargetSlug: taskDone,
 				},
 			},
 		},
@@ -144,24 +154,24 @@ var Task = Category{
 			Slug:        taskScheduled,
 			DisplayName: "Scheduled",
 			Timeframes:  []Timeframe{Today, Tomorrow, ThisWeek, NextWeek, ThisMonth, NextMonth},
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
+			Transitions: TransitionList{
+				{Event: "reschedule", TargetSlug: taskUnscheduled},
+				{Event: "done", TargetSlug: taskDone},
 			},
 		},
 		{
 			Slug:        taskLater,
 			DisplayName: "Someday",
-			Transitions: []Transition{
-				{Event: "reschedule", Target: taskUnscheduled},
-				{Event: "done", Target: taskDone},
+			Transitions: TransitionList{
+				{Event: "reschedule", TargetSlug: taskUnscheduled},
+				{Event: "done", TargetSlug: taskDone},
 			},
 		},
 		{
 			Slug:        taskDone,
 			DisplayName: "Done",
-			Transitions: []Transition{
-				{Event: "undo", Target: taskUnscheduled},
+			Transitions: TransitionList{
+				{Event: "undo", TargetSlug: taskUnscheduled},
 			},
 		},
 	},
@@ -188,87 +198,87 @@ var Note = Category{
 		{
 			Slug:        noteUncategorized,
 			DisplayName: "Uncategorized",
-			Transitions: []Transition{
-				{Event: noteBookmark, Target: noteBookmark},
-				{Event: noteReference, Target: noteReference},
-				{Event: noteGratitude, Target: noteGratitude},
-				{Event: noteIdea, Target: noteIdea},
-				{Event: noteObservation, Target: noteObservation},
-				{Event: noteReflection, Target: noteReflection},
-				{Event: noteRead, Target: noteRead},
-				{Event: noteListen, Target: noteListen},
-				{Event: noteWatch, Target: noteWatch},
-				{Event: noteOther, Target: noteOther},
+			Transitions: TransitionList{
+				{Event: noteBookmark, TargetSlug: noteBookmark},
+				{Event: noteReference, TargetSlug: noteReference},
+				{Event: noteGratitude, TargetSlug: noteGratitude},
+				{Event: noteIdea, TargetSlug: noteIdea},
+				{Event: noteObservation, TargetSlug: noteObservation},
+				{Event: noteReflection, TargetSlug: noteReflection},
+				{Event: noteRead, TargetSlug: noteRead},
+				{Event: noteListen, TargetSlug: noteListen},
+				{Event: noteWatch, TargetSlug: noteWatch},
+				{Event: noteOther, TargetSlug: noteOther},
 			},
 		},
 		{
 			Slug:        noteBookmark,
 			DisplayName: "Bookmark",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteReference,
 			DisplayName: "Remember",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteGratitude,
 			DisplayName: "Gratitude",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteIdea,
 			DisplayName: "Idea",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteObservation,
 			DisplayName: "Observation",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteReflection,
 			DisplayName: "Reflection",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteRead,
 			DisplayName: "Read",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteListen,
 			DisplayName: "Listen",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteWatch,
 			DisplayName: "Watch",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 		{
 			Slug:        noteOther,
 			DisplayName: "Other",
-			Transitions: []Transition{
-				{Event: "recategorize", Target: noteUncategorized},
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
 		},
 	},

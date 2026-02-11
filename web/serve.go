@@ -112,7 +112,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 		r.Post("/dsnotes", svc.postNotesHandler)
 		r.Post("/refile/{noteID}/{category}", svc.postRefileNote)
-		r.Post("/subfile/{noteID}/{subcategory}", svc.postSubfileNote)
+		r.Post("/trans/{noteID}/{event}", svc.postSubcategoryTransition)
 		r.Post("/delete/{noteID}", svc.postDeleteNote)
 		r.Post("/undelete/{noteID}", svc.postUndeleteNote)
 	})
@@ -483,9 +483,9 @@ func (s *webservice) postRefileNote(w http.ResponseWriter, r *http.Request) {
 	sse.PatchElementGostar(noteEl)
 }
 
-func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
+func (s *webservice) postSubcategoryTransition(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "noteID")
-	subcategoryParam := chi.URLParam(r, "subcategory")
+	event := chi.URLParam(r, "event")
 
 	var signals signals
 	err := datastar.ReadSignals(r, &signals)
@@ -506,27 +506,9 @@ func (s *webservice) postSubfileNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subcategory := notesmeta.Categories.Get(note.Category).Subcategories.Get(subcategoryParam)
-	if subcategory.DaysFn != nil {
-		today := notesmeta.Midnight(time.Now().In(location))
-		due := today.AddDate(0, 0, subcategory.DaysFn())
-
-		err = s.app.Commander.Send(commands.SetNoteDue{NoteID: noteID, Due: due})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else if note.Due != nil {
-		err = s.app.Commander.Send(commands.ClearNoteDue{NoteID: noteID})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	err = s.app.Commander.Send(commands.SetNoteSubcategory{NoteID: noteID, Subcategory: subcategory.Slug})
+	err = s.app.Commander.Send(commands.TransitionNoteSubcategory{NoteID: note.ID, TransitionEvent: event})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "TransitionNoteSubcategory: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -786,7 +768,7 @@ func refileButton(noteID uuid.UUID, category string, label string) g.Node {
 }
 
 func subfileButton(noteID uuid.UUID, t notesmeta.Transition) g.Node {
-	url := fmt.Sprintf("/subfile/%s/%s", noteID, t.Target)
+	url := fmt.Sprintf("/trans/%s/%s", noteID, t.Event)
 	return h.Button(h.Class("link"), g.Attr("data-on:click", fmt.Sprintf("@post('%s')", url)), g.Text(t.Event))
 }
 
