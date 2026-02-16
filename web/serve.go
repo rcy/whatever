@@ -28,14 +28,6 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
-var location = func() *time.Location {
-	loc, err := time.LoadLocation("America/Creston")
-	if err != nil {
-		panic(err)
-	}
-	return loc
-}()
-
 //go:embed style.css
 var styles string
 
@@ -351,19 +343,34 @@ func (s *webservice) notesIndex(w http.ResponseWriter, r *http.Request) {
 	slices.Reverse(noteList)
 
 	timeframe := chi.URLParam(r, "timeframe")
-	fmt.Println(getTimeInterval(timeframe))
+	if timeframe != "" {
+		start, end, err := notesmeta.TimeframeRange(timeframe)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	content, err := s.page(r, categoryParam, subcategoryParam, notes(noteList))
+		// filter out notes not within timeframe
+		filteredNotes := []note.Note{}
+		for _, note := range noteList {
+			if note.Due != nil {
+				due := time.Unix(*note.Due, 0)
+				if due.After(start) && (due.Before(end) || due.Equal(end)) {
+					filteredNotes = append(filteredNotes, note)
+				}
+			}
+		}
+		noteList = filteredNotes
+	}
+
+	content, err := s.page(r, categoryParam, subcategoryParam, h.Div(
+		notes(noteList),
+	))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	content.Render(w)
-}
-
-func getTimeInterval(timeframe string) (int, int, error) {
-	fmt.Println(notesmeta.Task.Subcategories.Get("unscheduled").Transitions)
-	return 0, 1, nil
 }
 
 func (s *webservice) notesPeople(w http.ResponseWriter, r *http.Request) {

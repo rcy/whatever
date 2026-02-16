@@ -1,9 +1,18 @@
 package notesmeta
 
 import (
+	"fmt"
 	"slices"
 	"time"
 )
+
+var location = func() *time.Location {
+	loc, err := time.LoadLocation("America/Creston")
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}()
 
 type Category struct {
 	Slug          string
@@ -93,14 +102,40 @@ type Timeframe struct {
 	Days        func() int
 }
 
-var (
-	Today     = Timeframe{Slug: "today", EventName: "today", DisplayName: "Today", Days: func() int { return 1 }}
-	Tomorrow  = Timeframe{Slug: "tomorrow", EventName: "tommorow", DisplayName: "Tomorrow", Days: func() int { return 2 }}
-	ThisWeek  = Timeframe{Slug: "thisweek", EventName: "thisweek", DisplayName: "ThisWeek", Days: func() int { return int(6 - time.Now().Weekday()) }}
-	NextWeek  = Timeframe{Slug: "nextweek", EventName: "nextweek", DisplayName: "NextWeek", Days: func() int { return 7 + int(6-time.Now().Weekday()) }}
-	ThisMonth = Timeframe{Slug: "thismonth", EventName: "thismonth", DisplayName: "ThisMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 1) }}
-	NextMonth = Timeframe{Slug: "nextmonth", EventName: "nextmonth", DisplayName: "NextMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 2) }}
-)
+var TimeframeList = []Timeframe{
+	Timeframe{Slug: "today", EventName: "today", DisplayName: "Today", Days: func() int { return 1 }},
+	Timeframe{Slug: "tomorrow", EventName: "tommorow", DisplayName: "Tomorrow", Days: func() int { return 2 }},
+	Timeframe{Slug: "thisweek", EventName: "thisweek", DisplayName: "ThisWeek", Days: func() int { return int(6 - time.Now().Weekday()) }},
+	Timeframe{Slug: "nextweek", EventName: "nextweek", DisplayName: "NextWeek", Days: func() int { return 7 + int(6-time.Now().Weekday()) }},
+	Timeframe{Slug: "thismonth", EventName: "thismonth", DisplayName: "ThisMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 1) }},
+	Timeframe{Slug: "nextmonth", EventName: "nextmonth", DisplayName: "NextMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 2) }},
+}
+
+func timeframeLookup(slug string) (bool, Timeframe) {
+	for _, tf := range TimeframeList {
+		if tf.Slug == slug {
+			return true, tf
+		}
+	}
+	return false, Timeframe{}
+}
+
+// Return start time and end time of range (relative to now) for timerange given by slug
+// Eg: TimeframeRange("tomorrow") returns midnight+1 day, midnight+2 days, nil
+func TimeframeRange(slug string) (time.Time, time.Time, error) {
+	for i, tf := range TimeframeList {
+		if tf.Slug == slug {
+			start := Midnight(time.Now().In(location))
+			end := start.AddDate(0, 0, tf.Days())
+			if i > 0 {
+				start = start.AddDate(0, 0, TimeframeList[i-1].Days())
+			}
+			return start, end, nil
+		}
+	}
+
+	return time.Time{}, time.Time{}, fmt.Errorf("could not find timeframe")
+}
 
 var Task = Category{
 	Slug:        "task",
@@ -109,51 +144,12 @@ var Task = Category{
 		{
 			Slug:        taskUnscheduled,
 			DisplayName: "Unscheduled",
-			Transitions: TransitionList{
-				{
-					Event:        Today.EventName,
-					TargetSlug:   taskScheduled,
-					DaysUntilDue: Today.Days,
-				},
-				{
-					Event:        Tomorrow.EventName,
-					TargetSlug:   taskScheduled,
-					DaysUntilDue: Tomorrow.Days,
-				},
-				{
-					Event:        ThisWeek.EventName,
-					TargetSlug:   taskScheduled,
-					DaysUntilDue: ThisWeek.Days,
-				},
-				{
-					Event:        NextWeek.EventName,
-					TargetSlug:   taskScheduled,
-					DaysUntilDue: NextWeek.Days,
-				},
-				{
-					Event:        ThisMonth.EventName,
-					TargetSlug:   taskScheduled,
-					DaysUntilDue: ThisMonth.Days,
-				},
-				{
-					Event:        NextMonth.EventName,
-					TargetSlug:   taskScheduled,
-					DaysUntilDue: NextMonth.Days,
-				},
-				{
-					Event:      "later",
-					TargetSlug: taskLater,
-				},
-				{
-					Event:      "done",
-					TargetSlug: taskDone,
-				},
-			},
+			Transitions: nil, // initialized in init() dynamically
 		},
 		{
 			Slug:        taskScheduled,
 			DisplayName: "Scheduled",
-			Timeframes:  []Timeframe{Today, Tomorrow, ThisWeek, NextWeek, ThisMonth, NextMonth},
+			Timeframes:  TimeframeList,
 			Transitions: TransitionList{
 				{Event: "reschedule", TargetSlug: taskUnscheduled},
 				{Event: "done", TargetSlug: taskDone},
@@ -175,6 +171,18 @@ var Task = Category{
 			},
 		},
 	},
+}
+
+func init() {
+	var txs = make([]Transition, len(TimeframeList))
+	for i, tf := range TimeframeList {
+		txs[i] = Transition{
+			Event:        tf.EventName,
+			TargetSlug:   taskScheduled,
+			DaysUntilDue: tf.Days,
+		}
+	}
+	Task.Subcategories[0].Transitions = txs
 }
 
 const (
