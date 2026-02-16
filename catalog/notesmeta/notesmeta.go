@@ -91,7 +91,7 @@ var DefaultCategory = Task
 const (
 	taskUnscheduled = "notnow"
 	taskScheduled   = "scheduled"
-	taskLater       = "later"
+	taskSomeday     = "someday"
 	taskDone        = "done"
 )
 
@@ -156,7 +156,7 @@ var Task = Category{
 			},
 		},
 		{
-			Slug:        taskLater,
+			Slug:        taskSomeday,
 			DisplayName: "Someday",
 			Transitions: TransitionList{
 				{Event: "reschedule", TargetSlug: taskUnscheduled},
@@ -184,8 +184,8 @@ func init() {
 	}
 	txs = append(txs,
 		Transition{
-			Event:      "later",
-			TargetSlug: taskLater,
+			Event:      "someday",
+			TargetSlug: taskSomeday,
 		},
 		Transition{
 			Event:      "done",
