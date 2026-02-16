@@ -196,6 +196,7 @@ const (
 	noteRead          = "read"
 	noteListen        = "listen"
 	noteWatch         = "watch"
+	noteQuote         = "quote"
 	noteOther         = "other"
 )
 
@@ -216,6 +217,7 @@ var Note = Category{
 				{Event: noteRead, TargetSlug: noteRead},
 				{Event: noteListen, TargetSlug: noteListen},
 				{Event: noteWatch, TargetSlug: noteWatch},
+				{Event: noteQuote, TargetSlug: noteQuote},
 				{Event: noteOther, TargetSlug: noteOther},
 			},
 		},
@@ -278,6 +280,13 @@ var Note = Category{
 		{
 			Slug:        noteWatch,
 			DisplayName: "Watch",
+			Transitions: TransitionList{
+				{Event: "recategorize", TargetSlug: noteUncategorized},
+			},
+		},
+		{
+			Slug:        noteQuote,
+			DisplayName: "Quote",
 			Transitions: TransitionList{
 				{Event: "recategorize", TargetSlug: noteUncategorized},
 			},
