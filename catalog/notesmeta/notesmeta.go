@@ -174,14 +174,24 @@ var Task = Category{
 }
 
 func init() {
-	var txs = make([]Transition, len(TimeframeList))
-	for i, tf := range TimeframeList {
-		txs[i] = Transition{
+	txs := []Transition{}
+	for _, tf := range TimeframeList {
+		txs = append(txs, Transition{
 			Event:        tf.EventName,
 			TargetSlug:   taskScheduled,
 			DaysUntilDue: tf.Days,
-		}
+		})
 	}
+	txs = append(txs,
+		Transition{
+			Event:      "later",
+			TargetSlug: taskLater,
+		},
+		Transition{
+			Event:      "done",
+			TargetSlug: taskDone,
+		},
+	)
 	Task.Subcategories[0].Transitions = txs
 }
 
