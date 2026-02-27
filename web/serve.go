@@ -527,6 +527,8 @@ func (s *webservice) postSubcategoryTransition(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	sse.PatchElementGostar(headerEl)
+
 	note, err = s.app.Notes.FindOne(noteID.String())
 	if err != nil {
 		sse.ConsoleError(err)
