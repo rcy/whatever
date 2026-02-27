@@ -515,6 +515,8 @@ func (s *webservice) postSubcategoryTransition(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	sse.ConsoleLog(fmt.Sprintf("trans: %v --> %s", note, event))
+
 	err = s.app.Commander.Send(commands.TransitionNoteSubcategory{NoteID: note.ID, TransitionEvent: event})
 	if err != nil {
 		sse.ConsoleError(err)
