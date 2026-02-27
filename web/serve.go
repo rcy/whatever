@@ -501,32 +501,31 @@ func (s *webservice) postSubcategoryTransition(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	sse := datastar.NewSSE(w, r)
+
 	noteID, err := uuid.Parse(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sse.ConsoleError(err)
 		return
 	}
 
 	note, err := s.app.Notes.FindOne(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sse.ConsoleError(err)
 		return
 	}
 
 	err = s.app.Commander.Send(commands.TransitionNoteSubcategory{NoteID: note.ID, TransitionEvent: event})
 	if err != nil {
-		http.Error(w, "TransitionNoteSubcategory: "+err.Error(), http.StatusInternalServerError)
+		sse.ConsoleError(err)
 		return
 	}
 
 	headerEl, err := s.header(r, signals.ViewCategory, signals.ViewSubcategory)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sse.ConsoleError(err)
 		return
 	}
-
-	sse := datastar.NewSSE(w, r)
-	sse.PatchElementGostar(headerEl)
 
 	note, err = s.app.Notes.FindOne(noteID.String())
 	if err != nil {
