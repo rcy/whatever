@@ -129,6 +129,8 @@ func TimeframeRange(slug string) (time.Time, time.Time, error) {
 			end := start.AddDate(0, 0, tf.Days())
 			if i > 0 {
 				start = start.AddDate(0, 0, TimeframeList[i-1].Days())
+			} else {
+				start = time.Unix(0, 0) // show overdue on today
 			}
 			return start, end, nil
 		}
