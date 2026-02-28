@@ -204,6 +204,7 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 		a.text = evt.Text
 	case events.NoteCategoryChanged:
 		a.category = evt.Category
+		a.subcategory = evt.Subcategory
 	case events.NoteSubcategoryChanged:
 		a.subcategory = evt.Subcategory
 	case events.NoteDueChanged:
