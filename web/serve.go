@@ -93,6 +93,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 
 		r.Get("/capture", svc.captureIndex)
 		r.Post("/capture", svc.postCapture)
+		r.Get("/capture/tasks", svc.captureTasksIndex)
+		r.Get("/capture/reference", svc.captureReferenceIndex)
 
 		r.Get("/note/{id}", svc.showNote)
 
