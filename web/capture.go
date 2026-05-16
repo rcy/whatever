@@ -1,8 +1,10 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rcy/whatever/catalog/notesmeta"
@@ -101,7 +103,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 	slices.Reverse(noteList)
 	capturePage(g.Group{
 		captureNav(),
-		captureNoteList(noteList),
+		captureTaskNoteList(noteList),
 	}).Render(w)
 }
 
@@ -123,6 +125,23 @@ func captureNoteList(noteList []note.Note) g.Node {
 	return h.Div(h.Class("note-list"),
 		g.Map(noteList, func(n note.Note) g.Node {
 			return h.Div(h.Class("note-item"), g.Text(n.Text))
+		}),
+	)
+}
+
+func captureTaskNoteList(noteList []note.Note) g.Node {
+	return h.Div(h.Class("note-list"),
+		g.Map(noteList, func(n note.Note) g.Node {
+			return h.Div(h.Class("note-item"),
+				h.Span(h.Style("color: gray; margin-right: 0.5em"), g.Text(n.Subcategory)),
+				h.Span(g.Text(n.Text)),
+				g.Iff(n.Due != nil, func() g.Node {
+					return h.Span(
+						h.Style("color: gray; margin-left: 0.5em"),
+						g.Text(fmt.Sprintf("· due %s", time.Unix(*n.Due, 0).Format("Jan 2"))),
+					)
+				}),
+			)
 		}),
 	)
 }
