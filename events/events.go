@@ -49,6 +49,7 @@ type NoteCategoryChanged struct {
 	NoteID      uuid.UUID
 	Category    string
 	Subcategory string
+	Actor       string // "user" or "ai"
 }
 
 type NoteSubcategoryChanged struct {

@@ -139,6 +139,7 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 				NoteID:      aggregateID,
 				Category:    categoryName,
 				Subcategory: string(subcategory.Slug),
+				Actor:       c.Actor,
 			},
 		}, nil
 	case commands.TransitionNoteSubcategory:

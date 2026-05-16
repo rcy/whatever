@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ type NotesCmd struct {
 	Delete   DeleteCmd   `cmd:"" aliases:"rm"`
 	Undelete UndeleteCmd `cmd:""`
 	Edit     EditCmd     `cmd:""`
+	Classify ClassifyCmd `cmd:"" help:"classify oldest inbox item using AI"`
 }
 
 type ListCmd struct {
@@ -62,8 +64,11 @@ type AddCmd struct {
 func (c *AddCmd) Run(app *app.App) error {
 	noteID := uuid.New()
 	err := app.Commander.Send(commands.CreateNote{
-		NoteID: noteID,
-		Text:   strings.Join(c.Text, " "),
+		NoteID:      noteID,
+		Owner:       os.Getenv("USER"),
+		Text:        strings.Join(c.Text, " "),
+		Category:    "inbox",
+		Subcategory: "default",
 	})
 	if err != nil {
 		return err

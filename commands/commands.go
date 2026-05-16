@@ -45,9 +45,16 @@ func (c SetNoteOwner) AggregateID() uuid.UUID { return c.NoteID }
 type SetNoteCategory struct {
 	NoteID   uuid.UUID
 	Category string
+	Actor    string // "user" or "ai"
 }
 
 func (c SetNoteCategory) AggregateID() uuid.UUID { return c.NoteID }
+
+type ClassifyNote struct {
+	NoteID uuid.UUID
+}
+
+func (c ClassifyNote) AggregateID() uuid.UUID { return c.NoteID }
 
 type TransitionNoteSubcategory struct {
 	NoteID          uuid.UUID
