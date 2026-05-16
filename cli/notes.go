@@ -19,7 +19,7 @@ type NotesCmd struct {
 	Delete   DeleteCmd   `cmd:"" aliases:"rm"`
 	Undelete UndeleteCmd `cmd:""`
 	Edit     EditCmd     `cmd:""`
-	Classify ClassifyCmd `cmd:"" help:"classify oldest inbox item using AI"`
+	Classify ClassifyCmd `cmd:"" help:"classify inbox items"`
 }
 
 type ListCmd struct {
