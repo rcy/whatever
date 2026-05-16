@@ -6,6 +6,7 @@ import (
 
 	"github.com/rcy/whatever/app"
 	"github.com/rcy/whatever/commands"
+	"github.com/rcy/whatever/workers/classify"
 )
 
 type ClassifyCmd struct{}
@@ -24,7 +25,7 @@ func (c *ClassifyCmd) Run(a *app.App) error {
 	}
 
 	for _, note := range notes {
-		category, err := categorize(note.Text)
+		category, err := classify.Categorize(note.Text)
 		if err != nil {
 			return err
 		}

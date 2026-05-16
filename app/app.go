@@ -11,6 +11,7 @@ import (
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/projections/note"
+	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
 )
 
@@ -20,6 +21,7 @@ type App struct {
 	EventDebugger interface {
 		DebugEvents() ([]evoke.RecordedEvent, error)
 	}
+	classify *classify.Worker
 }
 
 func New(filename string) (*App, error) {
@@ -99,6 +101,9 @@ func New(filename string) (*App, error) {
 	enrichWorker := enrich.NewWorker(commandBus)
 	eventBus.Subscribe(events.NoteEnrichmentRequested{}, enrichWorker)
 
+	classifyWorker := classify.NewWorker(commandBus)
+	eventBus.Subscribe(events.NoteCreated{}, classifyWorker)
+
 	err = migrateOwnerlessNotes(noteProjection, commandBus)
 	if err != nil {
 		return nil, err
@@ -108,6 +113,7 @@ func New(filename string) (*App, error) {
 		Commander:     commandBus,
 		Notes:         noteProjection,
 		EventDebugger: eventStore,
+		classify:      classifyWorker,
 	}, nil
 }
 
