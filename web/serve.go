@@ -91,6 +91,9 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Slug, http.StatusSeeOther)
 		})
 
+		r.Get("/capture", svc.captureIndex)
+		r.Post("/capture", svc.postCapture)
+
 		r.Get("/note/{id}", svc.showNote)
 
 		r.Get("/events", svc.eventsIndex)
