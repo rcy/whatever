@@ -23,17 +23,17 @@ type NotesCmd struct {
 }
 
 type ListCmd struct {
-	Owner   string `help:"Owner of the notes to list"`
-	Deleted bool   `help:"Show deleted notes"`
+	Deleted bool `help:"Show deleted notes"`
 }
 
 func (c *ListCmd) Run(app *app.App) error {
+	ownerID := os.Getenv("OWNER_ID")
 	var noteList []note.Note
 	var err error
 	if c.Deleted {
-		noteList, err = app.Notes.FindAllDeleted(c.Owner)
+		noteList, err = app.Notes.FindAllDeleted(ownerID)
 	} else {
-		noteList, err = app.Notes.FindAll(c.Owner)
+		noteList, err = app.Notes.FindAll(ownerID)
 	}
 	if err != nil {
 		return err
@@ -62,10 +62,11 @@ type AddCmd struct {
 }
 
 func (c *AddCmd) Run(app *app.App) error {
+	ownerID := os.Getenv("OWNER_ID")
 	noteID := uuid.New()
 	err := app.Commander.Send(commands.CreateNote{
 		NoteID:      noteID,
-		Owner:       os.Getenv("USER"),
+		Owner:       ownerID,
 		Text:        strings.Join(c.Text, " "),
 		Category:    "inbox",
 		Subcategory: "default",

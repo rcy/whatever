@@ -11,9 +11,9 @@ import (
 type ClassifyCmd struct{}
 
 func (c *ClassifyCmd) Run(a *app.App) error {
-	owner := os.Getenv("USER")
+	ownerID := os.Getenv("OWNER_ID")
 
-	notes, err := a.Notes.FindAllByCategory(owner, "inbox")
+	notes, err := a.Notes.FindAllByCategory(ownerID, "inbox")
 	if err != nil {
 		return err
 	}
