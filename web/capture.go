@@ -18,7 +18,7 @@ import (
 var captureStyles = g.Raw(`
 	body { margin: 0; font-family: monospace; }
 	button { font-family: inherit; background: none; border: none; cursor: pointer; padding: 0; color: gray; vertical-align: baseline; }
-	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; position: sticky; top: 0; background: white; z-index: 1; }
+	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; position: sticky; top: 0; background: #f5f5f5; z-index: 1; }
 	.capture-nav a { text-decoration: none; color: inherit; white-space: nowrap; }
 	.capture-nav a:hover { text-decoration: underline; }
 	.note-list { padding: 1em; display: flex; flex-direction: column; gap: 0.5em; }
@@ -29,13 +29,20 @@ var captureStyles = g.Raw(`
 `)
 
 func captureNavWithRequest(r *http.Request, postAction string) g.Node {
-	return captureNav(postAction, getUserInfo(r).Picture)
+	return captureNav(postAction, getUserInfo(r).Picture, r.URL.Path)
 }
 
-func captureNav(postAction, pictureURL string) g.Node {
+func captureNav(postAction, pictureURL, activePath string) g.Node {
+	navItem := func(href, label string) g.Node {
+		if activePath == href {
+			return h.Span(h.Style("font-weight:bold"), g.Text(label))
+		}
+		return h.A(h.Href(href), g.Text(label))
+	}
 	return h.Nav(h.Class("capture-nav"),
-		h.A(h.Href("/capture/tasks"), g.Text("tasks")),
-		h.A(h.Href("/capture/reference"), g.Text("reference")),
+		h.Span(h.Style("font-weight:bold"), g.Text("NOTNOW")),
+		navItem("/capture/tasks", "tasks"),
+		navItem("/capture/reference", "notes"),
 		h.Form(
 			h.Method("POST"),
 			h.Action(postAction),
@@ -47,7 +54,7 @@ func captureNav(postAction, pictureURL string) g.Node {
 					if postAction == "/capture/tasks" {
 						return "capture task..."
 					}
-					return "capture thing to remember..."
+					return "capture note..."
 				}()),
 				h.AutoComplete("off"),
 			),
