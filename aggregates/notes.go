@@ -194,8 +194,10 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 	switch evt := e.(type) {
 	case events.NoteCreated:
 		a.id = evt.NoteID // should already be set?
-		a.text = evt.Text
 		a.owner = evt.Owner
+		a.text = evt.Text
+		a.category = evt.Category
+		a.subcategory = evt.Subcategory
 	case events.NoteOwnerSet:
 		a.owner = evt.Owner
 	case events.NoteDeleted:
