@@ -94,16 +94,39 @@ func (s *webservice) postCapture(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
-	userInfo := getUserInfo(r)
-	noteList, err := s.app.Notes.FindAllByCategoryAndSubcategoryNot(userInfo.Id, "task", "done")
+	owner := getUserInfo(r).Id
+
+	scheduled, err := s.app.Notes.FindAllByCategoryAndSubcategory(owner, "task", "scheduled")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	slices.Reverse(noteList)
+	slices.SortStableFunc(scheduled, func(a, b note.Note) int {
+		if a.Due != nil && b.Due != nil {
+			return int(*a.Due - *b.Due)
+		}
+		return 0
+	})
+
+	someday, err := s.app.Notes.FindAllByCategoryAndSubcategory(owner, "task", "someday")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(someday)
+
+	notnow, err := s.app.Notes.FindAllByCategoryAndSubcategory(owner, "task", "notnow")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(notnow)
+
 	capturePage(g.Group{
 		captureNav(),
-		captureTaskNoteList(noteList),
+		captureTaskSection("not scheduled", notnow),
+		captureTaskSection("scheduled", scheduled),
+		captureTaskSection("someday", someday),
 	}).Render(w)
 }
 
@@ -129,19 +152,24 @@ func captureNoteList(noteList []note.Note) g.Node {
 	)
 }
 
-func captureTaskNoteList(noteList []note.Note) g.Node {
-	return h.Div(h.Class("note-list"),
-		g.Map(noteList, func(n note.Note) g.Node {
-			return h.Div(h.Class("note-item"),
-				h.Span(h.Style("color: gray; margin-right: 0.5em"), g.Text(n.Subcategory)),
-				h.Span(g.Text(n.Text)),
-				g.Iff(n.Due != nil, func() g.Node {
-					return h.Span(
-						h.Style("color: gray; margin-left: 0.5em"),
-						g.Text(fmt.Sprintf("· due %s", time.Unix(*n.Due, 0).Format("Jan 2"))),
-					)
-				}),
-			)
-		}),
+func captureTaskSection(heading string, noteList []note.Note) g.Node {
+	if len(noteList) == 0 {
+		return nil
+	}
+	return h.Div(
+		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text(heading)),
+		h.Div(h.Class("note-list"),
+			g.Map(noteList, func(n note.Note) g.Node {
+				return h.Div(h.Class("note-item"),
+					h.Span(g.Text(n.Text)),
+					g.Iff(n.Due != nil, func() g.Node {
+						return h.Span(
+							h.Style("color: gray; margin-left: 0.5em"),
+							g.Text(fmt.Sprintf("· due %s", time.Unix(*n.Due, 0).Format("Jan 2"))),
+						)
+					}),
+				)
+			}),
+		),
 	)
 }
