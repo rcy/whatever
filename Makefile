@@ -1,5 +1,5 @@
 start:
-	WHATEVER_ENV=dev PORT=9998 go tool air
+	TZ=UTC WHATEVER_ENV=dev PORT=9998 go tool air
 
 build:
 	go build -o ./tmp/main .
