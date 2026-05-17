@@ -185,6 +185,19 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 	)
 }
 
+func dueRemaining(dueUnix int64) string {
+	due := time.Unix(dueUnix, 0)
+	now := time.Now()
+	dy, dm, dd := due.Date()
+	ny, nm, nd := now.Date()
+	if dy == ny && dm == nm && dd == nd {
+		h := int(time.Until(due).Hours())
+		return fmt.Sprintf("%dh", h)
+	}
+	days := int(time.Until(due).Hours() / 24)
+	return fmt.Sprintf("%dd", days)
+}
+
 func captureNoteList(noteList []note.Note) g.Node {
 	return h.Div(h.Class("note-list"),
 		g.Map(noteList, func(n note.Note) g.Node {
@@ -206,7 +219,7 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 					g.Iff(n.Due != nil, func() g.Node {
 						return h.Span(
 							h.Style("color: gray; margin-left: 0.5em"),
-							g.Text(fmt.Sprintf("· due %s", time.Unix(*n.Due, 0).Format("Jan 2"))),
+							g.Text("· "+dueRemaining(*n.Due)),
 						)
 					}),
 				)
