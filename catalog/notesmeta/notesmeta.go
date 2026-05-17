@@ -35,7 +35,7 @@ func (c Category) Inbox() Subcategory {
 type Transition struct {
 	Event        string
 	TargetSlug   string
-	DaysUntilDue func() int
+	DaysUntilDue func(time.Time) int
 }
 
 type Subcategory struct {
@@ -99,16 +99,16 @@ type Timeframe struct {
 	Slug        string
 	EventName   string
 	DisplayName string
-	Days        func() int
+	Days        func(time.Time) int
 }
 
 var TimeframeList = []Timeframe{
-	Timeframe{Slug: "today", EventName: "today", DisplayName: "Today", Days: func() int { return 1 }},
-	Timeframe{Slug: "tomorrow", EventName: "tommorow", DisplayName: "Tomorrow", Days: func() int { return 2 }},
-	Timeframe{Slug: "thisweek", EventName: "thisweek", DisplayName: "ThisWeek", Days: func() int { return int(6 - time.Now().Weekday()) }},
-	Timeframe{Slug: "nextweek", EventName: "nextweek", DisplayName: "NextWeek", Days: func() int { return 7 + int(6-time.Now().Weekday()) }},
-	Timeframe{Slug: "thismonth", EventName: "thismonth", DisplayName: "ThisMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 1) }},
-	Timeframe{Slug: "nextmonth", EventName: "nextmonth", DisplayName: "NextMonth", Days: func() int { return remainingDaysInMonth(time.Now(), 2) }},
+	{Slug: "today", EventName: "today", DisplayName: "Today", Days: func(t time.Time) int { return 1 }},
+	{Slug: "tomorrow", EventName: "tommorow", DisplayName: "Tomorrow", Days: func(t time.Time) int { return 2 }},
+	{Slug: "thisweek", EventName: "thisweek", DisplayName: "ThisWeek", Days: func(t time.Time) int { return int(6 - t.Weekday()) }},
+	{Slug: "nextweek", EventName: "nextweek", DisplayName: "NextWeek", Days: func(t time.Time) int { return 7 + int(6-t.Weekday()) }},
+	{Slug: "thismonth", EventName: "thismonth", DisplayName: "ThisMonth", Days: func(t time.Time) int { return remainingDaysInMonth(t, 1) }},
+	{Slug: "nextmonth", EventName: "nextmonth", DisplayName: "NextMonth", Days: func(t time.Time) int { return remainingDaysInMonth(t, 2) }},
 }
 
 func timeframeLookup(slug string) (bool, Timeframe) {
@@ -125,10 +125,11 @@ func timeframeLookup(slug string) (bool, Timeframe) {
 func TimeframeRange(slug string) (time.Time, time.Time, error) {
 	for i, tf := range TimeframeList {
 		if tf.Slug == slug {
-			start := Midnight(time.Now().In(location))
-			end := start.AddDate(0, 0, tf.Days())
+			now := time.Now().In(location)
+			start := Midnight(now)
+			end := start.AddDate(0, 0, tf.Days(now))
 			if i > 0 {
-				start = start.AddDate(0, 0, TimeframeList[i-1].Days())
+				start = start.AddDate(0, 0, TimeframeList[i-1].Days(now))
 			} else {
 				start = time.Unix(0, 0) // show overdue on today
 			}

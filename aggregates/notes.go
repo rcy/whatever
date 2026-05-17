@@ -159,7 +159,8 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 		}}
 
 		if transition.DaysUntilDue != nil {
-			due := notesmeta.Midnight(time.Now().In(location)).AddDate(0, 0, transition.DaysUntilDue())
+			now := time.Now().In(location)
+			due := notesmeta.Midnight(now).AddDate(0, 0, transition.DaysUntilDue(now))
 			eventList = append(eventList, events.NoteDueChanged{NoteID: aggregateID, Due: due})
 		} else if a.due != nil {
 			eventList = append(eventList, events.NoteDueCleared{NoteID: aggregateID})

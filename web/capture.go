@@ -133,7 +133,9 @@ type scheduledBucket struct {
 }
 
 func partitionScheduled(notes []note.Note) []scheduledBucket {
-	midnight := notesmeta.Midnight(time.Now())
+	loc, _ := time.LoadLocation("America/Vancouver")
+	now := time.Now().In(loc)
+	midnight := notesmeta.Midnight(now)
 
 	buckets := []scheduledBucket{{name: "overdue"}}
 	for _, tf := range notesmeta.TimeframeList {
@@ -152,7 +154,7 @@ func partitionScheduled(notes []note.Note) []scheduledBucket {
 		}
 		placed := false
 		for i, tf := range notesmeta.TimeframeList {
-			if due <= midnight.AddDate(0, 0, tf.Days()).Unix() {
+			if due <= midnight.AddDate(0, 0, tf.Days(now)).Unix() {
 				buckets[i+1].notes = append(buckets[i+1].notes, n)
 				placed = true
 				break
