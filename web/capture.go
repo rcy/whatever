@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -61,15 +60,6 @@ func capturePage(body g.Node) g.Node {
 		h.Body(
 			g.Attr("data-signals", `{"activeNote":""}`),
 			body,
-			h.Script(g.Raw(`
-				document.querySelectorAll('details[id]').forEach(el => {
-					const key = 'details:' + el.id;
-					if (localStorage.getItem(key) === 'closed') el.removeAttribute('open');
-					el.addEventListener('toggle', () => {
-						localStorage.setItem(key, el.open ? 'open' : 'closed');
-					});
-				});
-			`)),
 		),
 	)
 }
@@ -157,7 +147,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 			return captureTaskSection(b.name, b.notes)
 		})),
 		captureSomedaySection(someday),
-		captureTaskSection("Done", done),
+		captureDoneSection(done),
 	}).Render(w)
 }
 
@@ -256,8 +246,8 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Details(g.Attr("open", ""), h.ID("section-notnow"),
-		h.Summary(g.Text("Unscheduled")),
+	return h.Div(
+		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; font-weight: bold"), g.Text("Unscheduled")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
@@ -298,11 +288,28 @@ func noteActions(n note.Note) g.Node {
 	)
 }
 
+func captureDoneSection(noteList []note.Note) g.Node {
+	if len(noteList) == 0 {
+		return nil
+	}
+	return h.Details(
+		h.Summary(g.Text("Done")),
+		h.Div(h.Class("note-list"),
+			g.Map(noteList, func(n note.Note) g.Node {
+				return h.Div(h.Class("note-item"),
+					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
+					noteActions(n),
+				)
+			}),
+		),
+	)
+}
+
 func captureSomedaySection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Details(g.Attr("open", ""), h.ID("section-someday"),
+	return h.Details(
 		h.Summary(g.Text("Someday")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
@@ -319,8 +326,8 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Details(g.Attr("open", ""), h.ID("section-"+strings.ToLower(strings.ReplaceAll(heading, " ", "-"))),
-		h.Summary(g.Text(heading)),
+	return h.Div(
+		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; font-weight: bold"), g.Text(heading)),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
