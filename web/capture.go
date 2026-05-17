@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
@@ -17,6 +18,7 @@ import (
 
 var captureStyles = g.Raw(`
 	body { margin: 0; font-family: monospace; }
+	button { font-family: inherit; background: none; border: none; cursor: pointer; padding: 0; color: gray; }
 	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; }
 	.capture-nav a { text-decoration: none; color: inherit; white-space: nowrap; }
 	.capture-nav a:hover { text-decoration: underline; }
@@ -116,7 +118,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 
 	capturePage(g.Group{
 		captureNav(),
-		captureTaskSection("not scheduled", notnow),
+		captureNotnowSection(notnow),
 		captureTaskSection("scheduled", scheduled),
 		captureTaskSection("someday", someday),
 	}).Render(w)
@@ -134,6 +136,53 @@ func (s *webservice) captureReferenceIndex(w http.ResponseWriter, r *http.Reques
 		captureNav(),
 		captureNoteList(noteList),
 	}).Render(w)
+}
+
+func (s *webservice) postCaptureTransition(w http.ResponseWriter, r *http.Request) {
+	noteID, err := uuid.Parse(chi.URLParam(r, "noteID"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = s.app.Commander.Send(commands.TransitionNoteSubcategory{
+		NoteID:          noteID,
+		TransitionEvent: chi.URLParam(r, "event"),
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
+}
+
+func captureNotnowSection(noteList []note.Note) g.Node {
+	if len(noteList) == 0 {
+		return nil
+	}
+	return h.Div(
+		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text("not scheduled")),
+		h.Div(h.Class("note-list"),
+			g.Map(noteList, func(n note.Note) g.Node {
+				transitionBtn := func(event, label string) g.Node {
+					return h.Form(
+						h.Method("POST"),
+						h.Action(fmt.Sprintf("/capture/trans/%s/%s", n.ID, event)),
+						h.Style("display:inline"),
+						h.Button(h.Type("submit"), h.Style("padding:0 0.25em"), g.Text(label)),
+					)
+				}
+				return h.Div(h.Class("note-item"),
+					h.Span(g.Text(n.Text)),
+					h.Span(h.Style("margin-left:0.5em"),
+						g.Map(notesmeta.TimeframeList, func(tf notesmeta.Timeframe) g.Node {
+							return transitionBtn(tf.EventName, tf.DisplayName)
+						}),
+						transitionBtn("someday", "Someday"),
+					),
+				)
+			}),
+		),
+	)
 }
 
 func captureNoteList(noteList []note.Note) g.Node {
