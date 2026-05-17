@@ -292,43 +292,44 @@ func (s *webservice) authHandler(w http.ResponseWriter, r *http.Request) {
 func (s *webservice) authCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	secure := s.secureCookie(r)
 	if !s.states.validate(r, r.URL.Query().Get("state")) {
-		http.Error(w, "invalid state", http.StatusBadRequest)
+		// http.Error(w, "invalid state", http.StatusBadRequest)
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 		return
 	}
 	s.states.clear(w, r, secure)
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "missing code", http.StatusBadRequest)
+		// http.Error(w, "missing code", http.StatusBadRequest)
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 		return
 	}
 
 	token, err := s.oauthConfig.Exchange(r.Context(), code)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("oauth exchange: %s", err), http.StatusBadRequest)
+		// http.Error(w, fmt.Sprintf("oauth exchange: %s", err), http.StatusBadRequest)
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 		return
 	}
 	client := s.oauthConfig.Client(r.Context(), token)
 
 	oauthSvc, err := googleoauth.NewService(r.Context(), option.WithHTTPClient(client))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("oauth service: %s", err), http.StatusInternalServerError)
+		// http.Error(w, fmt.Sprintf("oauth service: %s", err), http.StatusInternalServerError)
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 		return
 	}
 
 	info, err := googleoauth.NewUserinfoService(oauthSvc).Get().Do()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("userinfo: %s", err), http.StatusBadRequest)
+		// http.Error(w, fmt.Sprintf("userinfo: %s", err), http.StatusBadRequest)
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 		return
 	}
 
-	// user := UserInfo{
-	// 	Email:   info.Email,
-	// 	Name:    info.Name,
-	// 	Picture: info.Picture,
-	// }
 	if err := s.sessions.issue(w, r, *info, secure); err != nil {
-		http.Error(w, fmt.Sprintf("issue session: %s", err), http.StatusInternalServerError)
+		// http.Error(w, fmt.Sprintf("issue session: %s", err), http.StatusInternalServerError)
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 		return
 	}
 
