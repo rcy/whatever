@@ -24,6 +24,8 @@ var captureStyles = g.Raw(`
 	.note-list { padding: 1em; display: flex; flex-direction: column; gap: 0.5em; }
 	.note-item { padding: 0.25em 0; border-bottom: 1px solid #eee; }
 	.invisible { visibility: hidden; }
+	details > summary { padding: 0 1em; margin: 0.5em 0 0.25em; font-weight: bold; cursor: pointer; font-size: inherit; font-family: inherit; }
+	details > summary::-webkit-details-marker, details > summary::marker { color: #ccc; }
 `)
 
 func captureNav(postAction string) g.Node {
@@ -244,8 +246,8 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Div(
-		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text("not scheduled")),
+	return h.Details(g.Attr("open", ""),
+		h.Summary(g.Text("not scheduled")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
@@ -290,8 +292,8 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Div(
-		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text("someday")),
+	return h.Details(g.Attr("open", ""),
+		h.Summary(g.Text("someday")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
@@ -307,8 +309,8 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Div(
-		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text(heading)),
+	return h.Details(g.Attr("open", ""),
+		h.Summary(g.Text(heading)),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
