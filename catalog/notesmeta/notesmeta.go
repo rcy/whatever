@@ -171,6 +171,7 @@ var Task = Category{
 			DisplayName: "Done",
 			Transitions: TransitionList{
 				{Event: "undo", TargetSlug: taskUnscheduled},
+				{Event: "reschedule", TargetSlug: taskUnscheduled},
 			},
 		},
 	},

@@ -131,6 +131,13 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.Reverse(notnow)
 
+	done, err := s.app.Notes.FindAllByCategoryAndSubcategory(owner, "task", "done")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	slices.Reverse(done)
+
 	capturePage(g.Group{
 		captureNav("/capture/tasks"),
 		captureNotnowSection(notnow),
@@ -138,6 +145,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 			return captureTaskSection(b.name, b.notes)
 		})),
 		captureSomedaySection(someday),
+		captureTaskSection("done", done),
 	}).Render(w)
 }
 
@@ -227,6 +235,8 @@ func scheduleButtons(n note.Note) g.Node {
 			return transitionBtn(tf.EventName, tf.DisplayName)
 		}),
 		transitionBtn("someday", "Someday"),
+		transitionBtn("done", "Never"),
+		transitionBtn("done", "Done"),
 	)
 }
 
@@ -255,17 +265,24 @@ func captureNoteList(noteList []note.Note) g.Node {
 	)
 }
 
-func rescheduleForm(n note.Note) g.Node {
+func noteActions(n note.Note) g.Node {
+	includeDone := n.Subcategory != "done"
+	includeReschedule := n.Subcategory != "notnow"
+	actionBtn := func(event, label string) g.Node {
+		return h.Form(
+			h.Method("POST"),
+			h.Action(fmt.Sprintf("/capture/trans/%s/%s", n.ID, event)),
+			h.Style("display:inline"),
+			h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text(label)),
+		)
+	}
 	return h.Span(
 		g.Attr("data-class", fmt.Sprintf(`{"invisible": $activeNote !== '%s'}`, n.ID)),
 		h.Class("invisible"),
 		h.Style("margin-left:0.5em"),
-		h.Form(
-			h.Method("POST"),
-			h.Action(fmt.Sprintf("/capture/trans/%s/reschedule", n.ID)),
-			h.Style("display:inline"),
-			h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text("reschedule")),
-		),
+		g.If(includeDone, actionBtn("done", "done")),
+		g.If(includeDone && includeReschedule, g.Text(" · ")),
+		g.If(includeReschedule, actionBtn("reschedule", "reschedule")),
 	)
 }
 
@@ -279,7 +296,7 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
 					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
-					rescheduleForm(n),
+					noteActions(n),
 				)
 			}),
 		),
@@ -296,7 +313,7 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
 					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
-					rescheduleForm(n),
+					noteActions(n),
 				)
 			}),
 		),
