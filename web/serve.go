@@ -88,7 +88,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Use(svc.authMiddleware)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/dsnotes/"+notesmeta.DefaultCategory.Slug, http.StatusSeeOther)
+			http.Redirect(w, r, "/capture", http.StatusSeeOther)
 		})
 
 		r.Get("/settings", svc.settingsIndex)
