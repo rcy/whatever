@@ -119,9 +119,50 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 	capturePage(g.Group{
 		captureNav(),
 		captureNotnowSection(notnow),
-		captureTaskSection("scheduled", scheduled),
+		g.Group(g.Map(partitionScheduled(scheduled), func(b scheduledBucket) g.Node {
+			return captureTaskSection(b.name, b.notes)
+		})),
 		captureSomedaySection(someday),
 	}).Render(w)
+}
+
+type scheduledBucket struct {
+	name  string
+	notes []note.Note
+}
+
+func partitionScheduled(notes []note.Note) []scheduledBucket {
+	midnight := notesmeta.Midnight(time.Now())
+
+	buckets := []scheduledBucket{{name: "overdue"}}
+	for _, tf := range notesmeta.TimeframeList {
+		buckets = append(buckets, scheduledBucket{name: tf.DisplayName})
+	}
+	buckets = append(buckets, scheduledBucket{name: "later"})
+
+	for _, n := range notes {
+		if n.Due == nil {
+			continue
+		}
+		due := *n.Due
+		if due < midnight.Unix() {
+			buckets[0].notes = append(buckets[0].notes, n)
+			continue
+		}
+		placed := false
+		for i, tf := range notesmeta.TimeframeList {
+			if due <= midnight.AddDate(0, 0, tf.Days()).Unix() {
+				buckets[i+1].notes = append(buckets[i+1].notes, n)
+				placed = true
+				break
+			}
+		}
+		if !placed {
+			buckets[len(buckets)-1].notes = append(buckets[len(buckets)-1].notes, n)
+		}
+	}
+
+	return buckets
 }
 
 func (s *webservice) captureReferenceIndex(w http.ResponseWriter, r *http.Request) {
