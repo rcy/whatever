@@ -157,7 +157,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 			return captureTaskSection(b.name, b.notes)
 		})),
 		captureSomedaySection(someday),
-		captureTaskSection("done", done),
+		captureTaskSection("Done", done),
 	}).Render(w)
 }
 
@@ -257,7 +257,7 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 		return nil
 	}
 	return h.Details(g.Attr("open", ""), h.ID("section-notnow"),
-		h.Summary(g.Text("not scheduled")),
+		h.Summary(g.Text("Unscheduled")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
@@ -303,7 +303,7 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 		return nil
 	}
 	return h.Details(g.Attr("open", ""), h.ID("section-someday"),
-		h.Summary(g.Text("someday")),
+		h.Summary(g.Text("Someday")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
