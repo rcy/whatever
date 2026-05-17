@@ -11,7 +11,6 @@ import (
 	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/projections/note"
-	"github.com/starfederation/datastar-go/datastar"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -27,17 +26,24 @@ var captureStyles = g.Raw(`
 	.invisible { visibility: hidden; }
 `)
 
-func captureNav() g.Node {
+func captureNav(postAction string) g.Node {
 	return h.Nav(h.Class("capture-nav"),
 		h.A(h.Href("/capture/tasks"), g.Text("tasks")),
 		h.A(h.Href("/capture/reference"), g.Text("reference")),
 		h.Form(
-			g.Attr("data-on:submit", "@post('/capture')"),
+			h.Method("POST"),
+			h.Action(postAction),
 			h.Style("flex:1; margin:0"),
 			h.Input(
-				g.Attr("data-bind", "body"),
+				h.Name("body"),
 				h.Style("width:100%"),
-				h.Placeholder("capture..."),
+				h.Placeholder(func() string {
+					if postAction == "/capture/tasks" {
+						return "capture task..."
+					}
+					return "capture thing to remember..."
+				}()),
+				h.AutoComplete("off"),
 			),
 		),
 	)
@@ -50,42 +56,50 @@ func capturePage(body g.Node) g.Node {
 			h.StyleEl(captureStyles),
 		),
 		h.Body(
-			g.Attr("data-signals", `{"body":"","activeNote":""}`),
+			g.Attr("data-signals", `{"activeNote":""}`),
 			body,
 		),
 	)
 }
 
 func (s *webservice) captureIndex(w http.ResponseWriter, r *http.Request) {
-	capturePage(captureNav()).Render(w)
+	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
 }
 
-func (s *webservice) postCapture(w http.ResponseWriter, r *http.Request) {
+func (s *webservice) postCaptureTask(w http.ResponseWriter, r *http.Request) {
 	userInfo := getUserInfo(r)
-
-	var sig signals
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if sig.Body != "" {
+	if body := r.FormValue("body"); body != "" {
 		err := s.app.Commander.Send(commands.CreateNote{
 			Owner:       userInfo.Id,
 			NoteID:      uuid.New(),
-			Text:        sig.Body,
-			Category:    notesmeta.Inbox.Slug,
-			Subcategory: notesmeta.Inbox.Inbox().Slug,
+			Text:        body,
+			Category:    notesmeta.Task.Slug,
+			Subcategory: notesmeta.Task.Inbox().Slug,
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
+	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
+}
 
-	sig.Body = ""
-	sse := datastar.NewSSE(w, r)
-	sse.MarshalAndPatchSignals(sig)
+func (s *webservice) postCaptureReference(w http.ResponseWriter, r *http.Request) {
+	userInfo := getUserInfo(r)
+	if body := r.FormValue("body"); body != "" {
+		err := s.app.Commander.Send(commands.CreateNote{
+			Owner:       userInfo.Id,
+			NoteID:      uuid.New(),
+			Text:        body,
+			Category:    notesmeta.Note.Slug,
+			Subcategory: notesmeta.Note.Inbox().Slug,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	http.Redirect(w, r, "/capture/reference", http.StatusSeeOther)
 }
 
 func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +132,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 	slices.Reverse(notnow)
 
 	capturePage(g.Group{
-		captureNav(),
+		captureNav("/capture/tasks"),
 		captureNotnowSection(notnow),
 		g.Group(g.Map(partitionScheduled(scheduled), func(b scheduledBucket) g.Node {
 			return captureTaskSection(b.name, b.notes)
@@ -177,7 +191,7 @@ func (s *webservice) captureReferenceIndex(w http.ResponseWriter, r *http.Reques
 	}
 	slices.Reverse(noteList)
 	capturePage(g.Group{
-		captureNav(),
+		captureNav("/capture/reference"),
 		captureNoteList(noteList),
 	}).Render(w)
 }
