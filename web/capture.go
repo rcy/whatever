@@ -28,7 +28,11 @@ var captureStyles = g.Raw(`
 	details > summary::-webkit-details-marker, details > summary::marker { color: #ccc; }
 `)
 
-func captureNav(postAction string) g.Node {
+func captureNavWithRequest(r *http.Request, postAction string) g.Node {
+	return captureNav(postAction, getUserInfo(r).Picture)
+}
+
+func captureNav(postAction, pictureURL string) g.Node {
 	return h.Nav(h.Class("capture-nav"),
 		h.A(h.Href("/capture/tasks"), g.Text("tasks")),
 		h.A(h.Href("/capture/reference"), g.Text("reference")),
@@ -48,6 +52,7 @@ func captureNav(postAction string) g.Node {
 				h.AutoComplete("off"),
 			),
 		),
+		h.Img(h.Src(pictureURL), h.Style("width:1.5em; height:1.5em; border-radius:50%")),
 	)
 }
 
@@ -141,7 +146,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 	slices.Reverse(done)
 
 	capturePage(g.Group{
-		captureNav("/capture/tasks"),
+		captureNavWithRequest(r, "/capture/tasks"),
 		captureNotnowSection(notnow),
 		g.Group(g.Map(partitionScheduled(scheduled), func(b scheduledBucket) g.Node {
 			return captureTaskSection(b.name, b.notes)
@@ -201,7 +206,7 @@ func (s *webservice) captureReferenceIndex(w http.ResponseWriter, r *http.Reques
 	}
 	slices.Reverse(noteList)
 	capturePage(g.Group{
-		captureNav("/capture/reference"),
+		captureNavWithRequest(r, "/capture/reference"),
 		captureNoteList(noteList),
 	}).Render(w)
 }
