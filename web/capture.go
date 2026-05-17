@@ -120,7 +120,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 		captureNav(),
 		captureNotnowSection(notnow),
 		captureTaskSection("scheduled", scheduled),
-		captureTaskSection("someday", someday),
+		captureSomedaySection(someday),
 	}).Render(w)
 }
 
@@ -155,6 +155,23 @@ func (s *webservice) postCaptureTransition(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
 }
 
+func scheduleButtons(n note.Note) g.Node {
+	transitionBtn := func(event, label string) g.Node {
+		return h.Form(
+			h.Method("POST"),
+			h.Action(fmt.Sprintf("/capture/trans/%s/%s", n.ID, event)),
+			h.Style("display:inline"),
+			h.Button(h.Type("submit"), h.Style("padding:0 0.25em"), g.Text(label)),
+		)
+	}
+	return h.Span(h.Style("margin-left:0.5em"),
+		g.Map(notesmeta.TimeframeList, func(tf notesmeta.Timeframe) g.Node {
+			return transitionBtn(tf.EventName, tf.DisplayName)
+		}),
+		transitionBtn("someday", "Someday"),
+	)
+}
+
 func captureNotnowSection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
@@ -163,22 +180,9 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text("not scheduled")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
-				transitionBtn := func(event, label string) g.Node {
-					return h.Form(
-						h.Method("POST"),
-						h.Action(fmt.Sprintf("/capture/trans/%s/%s", n.ID, event)),
-						h.Style("display:inline"),
-						h.Button(h.Type("submit"), h.Style("padding:0 0.25em"), g.Text(label)),
-					)
-				}
 				return h.Div(h.Class("note-item"),
 					h.Span(g.Text(n.Text)),
-					h.Span(h.Style("margin-left:0.5em"),
-						g.Map(notesmeta.TimeframeList, func(tf notesmeta.Timeframe) g.Node {
-							return transitionBtn(tf.EventName, tf.DisplayName)
-						}),
-						transitionBtn("someday", "Someday"),
-					),
+					scheduleButtons(n),
 				)
 			}),
 		),
@@ -206,6 +210,32 @@ func captureNoteList(noteList []note.Note) g.Node {
 	)
 }
 
+func rescheduleBtn(n note.Note, label string) g.Node {
+	return h.Form(
+		h.Method("POST"),
+		h.Action(fmt.Sprintf("/capture/trans/%s/reschedule", n.ID)),
+		h.Style("display:inline; margin-left:0.5em"),
+		h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text("· "+label)),
+	)
+}
+
+func captureSomedaySection(noteList []note.Note) g.Node {
+	if len(noteList) == 0 {
+		return nil
+	}
+	return h.Div(
+		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; color: gray"), g.Text("someday")),
+		h.Div(h.Class("note-list"),
+			g.Map(noteList, func(n note.Note) g.Node {
+				return h.Div(h.Class("note-item"),
+					h.Span(g.Text(n.Text)),
+					rescheduleBtn(n, "someday"),
+				)
+			}),
+		),
+	)
+}
+
 func captureTaskSection(heading string, noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
@@ -217,10 +247,7 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
 					h.Span(g.Text(n.Text)),
 					g.Iff(n.Due != nil, func() g.Node {
-						return h.Span(
-							h.Style("color: gray; margin-left: 0.5em"),
-							g.Text("· "+dueRemaining(*n.Due)),
-						)
+						return rescheduleBtn(n, dueRemaining(*n.Due))
 					}),
 				)
 			}),
