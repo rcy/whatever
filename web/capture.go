@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -60,6 +61,15 @@ func capturePage(body g.Node) g.Node {
 		h.Body(
 			g.Attr("data-signals", `{"activeNote":""}`),
 			body,
+			h.Script(g.Raw(`
+				document.querySelectorAll('details[id]').forEach(el => {
+					const key = 'details:' + el.id;
+					if (localStorage.getItem(key) === 'closed') el.removeAttribute('open');
+					el.addEventListener('toggle', () => {
+						localStorage.setItem(key, el.open ? 'open' : 'closed');
+					});
+				});
+			`)),
 		),
 	)
 }
@@ -246,7 +256,7 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Details(g.Attr("open", ""),
+	return h.Details(g.Attr("open", ""), h.ID("section-notnow"),
 		h.Summary(g.Text("not scheduled")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
@@ -292,7 +302,7 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Details(g.Attr("open", ""),
+	return h.Details(g.Attr("open", ""), h.ID("section-someday"),
 		h.Summary(g.Text("someday")),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
@@ -309,7 +319,7 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
-	return h.Details(g.Attr("open", ""),
+	return h.Details(g.Attr("open", ""), h.ID("section-"+strings.ToLower(strings.ReplaceAll(heading, " ", "-"))),
 		h.Summary(g.Text(heading)),
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
