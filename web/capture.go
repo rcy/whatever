@@ -171,7 +171,7 @@ func partitionScheduled(notes []note.Note) []scheduledBucket {
 	now := time.Now().In(loc)
 	midnight := notesmeta.Midnight(now)
 
-	buckets := []scheduledBucket{{name: "overdue"}}
+	buckets := []scheduledBucket{{name: "Overdue"}}
 	for _, tf := range notesmeta.TimeframeList {
 		buckets = append(buckets, scheduledBucket{name: tf.DisplayName})
 	}
