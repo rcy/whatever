@@ -17,20 +17,26 @@ import (
 
 var captureStyles = g.Raw(`
 	body { margin: 0; font-family: monospace; }
-	.capture-nav { display: flex; gap: 1em; padding: 1em; border-bottom: 1px solid #ccc; }
-	.capture-nav a { text-decoration: none; color: inherit; }
+	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; }
+	.capture-nav a { text-decoration: none; color: inherit; white-space: nowrap; }
 	.capture-nav a:hover { text-decoration: underline; }
-	.capture-input-wrap { display: flex; justify-content: center; padding: 2em; }
-	#capture-input { font-size: 1.5em; padding: 0.5em; width: 500px; max-width: 90vw; }
 	.note-list { padding: 1em; display: flex; flex-direction: column; gap: 0.5em; }
 	.note-item { padding: 0.25em 0; border-bottom: 1px solid #eee; }
 `)
 
 func captureNav() g.Node {
 	return h.Nav(h.Class("capture-nav"),
-		h.A(h.Href("/capture"), g.Text("capture")),
 		h.A(h.Href("/capture/tasks"), g.Text("tasks")),
 		h.A(h.Href("/capture/reference"), g.Text("reference")),
+		h.Form(
+			g.Attr("data-on:submit", "@post('/capture')"),
+			h.Style("flex:1; margin:0"),
+			h.Input(
+				g.Attr("data-bind", "body"),
+				h.Style("width:100%"),
+				h.Placeholder("capture..."),
+			),
+		),
 	)
 }
 
@@ -40,29 +46,15 @@ func capturePage(body g.Node) g.Node {
 			h.Script(h.Type("module"), h.Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js")),
 			h.StyleEl(captureStyles),
 		),
-		h.Body(body),
+		h.Body(
+			g.Attr("data-signals", `{"body":""}`),
+			body,
+		),
 	)
 }
 
 func (s *webservice) captureIndex(w http.ResponseWriter, r *http.Request) {
-	capturePage(
-		g.Group{
-			captureNav(),
-			h.Div(h.Class("capture-input-wrap"),
-				g.Attr("data-signals", `{"body":""}`),
-				h.Form(
-					g.Attr("data-on:submit", "@post('/capture')"),
-					h.Style("margin:0"),
-					h.Input(
-						h.ID("capture-input"),
-						g.Attr("data-bind", "body"),
-						h.Placeholder("What's on your mind?"),
-						h.AutoFocus(),
-					),
-				),
-			),
-		},
-	).Render(w)
+	capturePage(captureNav()).Render(w)
 }
 
 func (s *webservice) postCapture(w http.ResponseWriter, r *http.Request) {
