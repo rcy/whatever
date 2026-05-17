@@ -52,7 +52,9 @@ func captureNav(postAction, pictureURL string) g.Node {
 				h.AutoComplete("off"),
 			),
 		),
-		h.Img(h.Src(pictureURL), h.Style("width:1.5em; height:1.5em; border-radius:50%")),
+		h.A(h.Href("/settings"), h.Style("display:flex; align-items:center"),
+			h.Img(h.Src(pictureURL), h.Style("width:1.5em; height:1.5em; border-radius:50%")),
+		),
 	)
 }
 
@@ -342,4 +344,13 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 			}),
 		),
 	)
+}
+
+func (s *webservice) settingsIndex(w http.ResponseWriter, r *http.Request) {
+	capturePage(g.Group{
+		captureNavWithRequest(r, "/capture/tasks"),
+		h.Div(h.Style("padding:1em"),
+			h.A(h.Href("/logout"), g.Text("logout")),
+		),
+	}).Render(w)
 }
