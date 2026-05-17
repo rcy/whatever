@@ -16,13 +16,14 @@ import (
 )
 
 var captureStyles = g.Raw(`
-	body { margin: 0; font-family: monospace; }
-	button { font-family: inherit; background: none; border: none; cursor: pointer; padding: 0; color: gray; vertical-align: baseline; }
+	body { margin: 0; font-family: monospace; font-size: 16px; }
+	button { font-family: inherit; font-size: inherit; background: none; border: none; cursor: pointer; padding: 0.25em 0.5em; color: gray; vertical-align: baseline; }
 	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; position: sticky; top: 0; background: #f5f5f5; z-index: 1; }
 	.capture-nav a { text-decoration: none; color: inherit; white-space: nowrap; }
 	.capture-nav a:hover { text-decoration: underline; }
+	.capture-nav input { font-size: 16px; }
 	.note-list { padding: 1em; display: flex; flex-direction: column; gap: 0.5em; }
-	.note-item { padding: 0.25em 0; border-bottom: 1px solid #eee; }
+	.note-item { padding: 0.5em 0; border-bottom: 1px solid #eee; }
 	.invisible { visibility: hidden; }
 	details > summary { padding: 0 1em; margin: 0.5em 0 0.25em; font-weight: bold; cursor: pointer; font-size: inherit; font-family: inherit; }
 	details > summary::-webkit-details-marker, details > summary::marker { color: #ccc; }
@@ -68,6 +69,7 @@ func captureNav(postAction, pictureURL, activePath string) g.Node {
 func capturePage(body g.Node) g.Node {
 	return h.HTML(
 		h.Head(
+			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
 			h.Script(h.Type("module"), h.Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js")),
 			h.StyleEl(captureStyles),
 		),
