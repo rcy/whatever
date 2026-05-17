@@ -178,6 +178,15 @@ func (p *Projection) FindAllByCategory(owner string, category string) ([]Note, e
 	return noteList, nil
 }
 
+func (p *Projection) FindAllByCategoryAndSubcategoryNot(owner string, category string, subcategory string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList, `select * from notes where owner = ? and category = ? and subcategory != ? order by ts asc`, owner, category, subcategory)
+	if err != nil {
+		return nil, fmt.Errorf("Select notes 6: %w", err)
+	}
+	return noteList, nil
+}
+
 func (p *Projection) FindAllByCategoryAndSubcategory(owner string, category string, subcategory string) ([]Note, error) {
 	var noteList []Note
 	err := p.db.Select(&noteList, `select * from notes where owner = ? and category = ? and subcategory = ? order by ts asc`, owner, category, subcategory)

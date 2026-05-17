@@ -95,7 +95,7 @@ func (s *webservice) postCapture(w http.ResponseWriter, r *http.Request) {
 
 func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 	userInfo := getUserInfo(r)
-	noteList, err := s.app.Notes.FindAllByCategory(userInfo.Id, "task")
+	noteList, err := s.app.Notes.FindAllByCategoryAndSubcategoryNot(userInfo.Id, "task", "done")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
