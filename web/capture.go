@@ -18,7 +18,7 @@ import (
 var captureStyles = g.Raw(`
 	body { margin: 0; font-family: monospace; }
 	button { font-family: inherit; background: none; border: none; cursor: pointer; padding: 0; color: gray; vertical-align: baseline; }
-	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; }
+	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; position: sticky; top: 0; background: white; z-index: 1; }
 	.capture-nav a { text-decoration: none; color: inherit; white-space: nowrap; }
 	.capture-nav a:hover { text-decoration: underline; }
 	.note-list { padding: 1em; display: flex; flex-direction: column; gap: 0.5em; }
