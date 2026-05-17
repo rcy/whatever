@@ -18,12 +18,13 @@ import (
 
 var captureStyles = g.Raw(`
 	body { margin: 0; font-family: monospace; }
-	button { font-family: inherit; background: none; border: none; cursor: pointer; padding: 0; color: gray; }
+	button { font-family: inherit; background: none; border: none; cursor: pointer; padding: 0; color: gray; vertical-align: baseline; }
 	.capture-nav { display: flex; align-items: center; gap: 1em; padding: 0.5em 1em; border-bottom: 1px solid #ccc; }
 	.capture-nav a { text-decoration: none; color: inherit; white-space: nowrap; }
 	.capture-nav a:hover { text-decoration: underline; }
 	.note-list { padding: 1em; display: flex; flex-direction: column; gap: 0.5em; }
 	.note-item { padding: 0.25em 0; border-bottom: 1px solid #eee; }
+	.invisible { visibility: hidden; }
 `)
 
 func captureNav() g.Node {
@@ -49,7 +50,7 @@ func capturePage(body g.Node) g.Node {
 			h.StyleEl(captureStyles),
 		),
 		h.Body(
-			g.Attr("data-signals", `{"body":""}`),
+			g.Attr("data-signals", `{"body":"","activeNote":""}`),
 			body,
 		),
 	)
@@ -230,19 +231,6 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 	)
 }
 
-func dueRemaining(dueUnix int64) string {
-	due := time.Unix(dueUnix, 0)
-	now := time.Now()
-	dy, dm, dd := due.Date()
-	ny, nm, nd := now.Date()
-	if dy == ny && dm == nm && dd == nd {
-		h := int(time.Until(due).Hours())
-		return fmt.Sprintf("%dh", h)
-	}
-	days := int(time.Until(due).Hours() / 24)
-	return fmt.Sprintf("%dd", days)
-}
-
 func captureNoteList(noteList []note.Note) g.Node {
 	return h.Div(h.Class("note-list"),
 		g.Map(noteList, func(n note.Note) g.Node {
@@ -251,12 +239,17 @@ func captureNoteList(noteList []note.Note) g.Node {
 	)
 }
 
-func rescheduleBtn(n note.Note, label string) g.Node {
-	return h.Form(
-		h.Method("POST"),
-		h.Action(fmt.Sprintf("/capture/trans/%s/reschedule", n.ID)),
-		h.Style("display:inline; margin-left:0.5em"),
-		h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text("· "+label)),
+func rescheduleForm(n note.Note) g.Node {
+	return h.Span(
+		g.Attr("data-class", fmt.Sprintf(`{"invisible": $activeNote !== '%s'}`, n.ID)),
+		h.Class("invisible"),
+		h.Style("margin-left:0.5em"),
+		h.Form(
+			h.Method("POST"),
+			h.Action(fmt.Sprintf("/capture/trans/%s/reschedule", n.ID)),
+			h.Style("display:inline"),
+			h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text("reschedule")),
+		),
 	)
 }
 
@@ -269,8 +262,8 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
-					h.Span(g.Text(n.Text)),
-					rescheduleBtn(n, "someday"),
+					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
+					rescheduleForm(n),
 				)
 			}),
 		),
@@ -286,10 +279,8 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
-					h.Span(g.Text(n.Text)),
-					g.Iff(n.Due != nil, func() g.Node {
-						return rescheduleBtn(n, dueRemaining(*n.Due))
-					}),
+					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
+					rescheduleForm(n),
 				)
 			}),
 		),
