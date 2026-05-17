@@ -278,8 +278,8 @@ func (s *webservice) authHandler(w http.ResponseWriter, r *http.Request) {
 			h.TitleEl(g.Text("Whatever NotNow")),
 			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
 			h.Section(
-				h.H2(g.Text("Sign in")),
-				h.P(g.Text("Continue with Google to access whatever.")),
+				h.H2(g.Text("NOTNOW")),
+				h.P(g.Text("Principled procrastination made easy.")),
 				h.A(
 					h.Class("contrast"),
 					h.Href(authURL),
