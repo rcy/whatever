@@ -188,7 +188,7 @@ func partitionScheduled(notes []note.Note) []scheduledBucket {
 			continue
 		}
 		due := *n.Due
-		if due < midnight.Unix() {
+		if due < midnight.AddDate(0, 0, 1).Unix() {
 			buckets[0].notes = append(buckets[0].notes, n)
 			continue
 		}
