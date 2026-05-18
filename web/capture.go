@@ -160,6 +160,9 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 		captureNavWithRequest(r, "/capture/tasks"),
 		captureNotnowSection(notnow),
 		g.Group(g.Map(partitionScheduled(scheduled), func(b scheduledBucket) g.Node {
+			if b.overdue {
+				return captureOverdueSection(b.notes)
+			}
 			return captureTaskSection(b.name, b.notes)
 		})),
 		captureSomedaySection(someday),
@@ -168,8 +171,9 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 type scheduledBucket struct {
-	name  string
-	notes []note.Note
+	name    string
+	notes   []note.Note
+	overdue bool
 }
 
 func partitionScheduled(notes []note.Note) []scheduledBucket {
@@ -177,7 +181,7 @@ func partitionScheduled(notes []note.Note) []scheduledBucket {
 	now := time.Now().In(loc)
 	midnight := notesmeta.Midnight(now)
 
-	buckets := []scheduledBucket{{name: "Overdue"}}
+	buckets := []scheduledBucket{{name: "Overdue", overdue: true}}
 	for _, tf := range notesmeta.TimeframeList {
 		buckets = append(buckets, scheduledBucket{name: tf.DisplayName})
 	}
@@ -258,6 +262,23 @@ func scheduleButtons(n note.Note) g.Node {
 	)
 }
 
+func captureOverdueSection(noteList []note.Note) g.Node {
+	if len(noteList) == 0 {
+		return nil
+	}
+	return h.Div(
+		h.Div(h.Style("padding: 0 1em; margin: 0.5em 0 0.25em; font-weight: bold"), g.Text("Overdue")),
+		h.Div(h.Class("note-list"),
+			g.Map(noteList, func(n note.Note) g.Node {
+				return h.Div(h.Class("note-item"),
+					h.Span(g.Text(n.Text)),
+					noteActionsVisible(n, true),
+				)
+			}),
+		),
+	)
+}
+
 func captureNotnowSection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
@@ -284,6 +305,10 @@ func captureNoteList(noteList []note.Note) g.Node {
 }
 
 func noteActions(n note.Note) g.Node {
+	return noteActionsVisible(n, false)
+}
+
+func noteActionsVisible(n note.Note, visible bool) g.Node {
 	includeDone := n.Subcategory != "done"
 	includeReschedule := n.Subcategory != "notnow"
 	actionBtn := func(event, label string) g.Node {
@@ -292,6 +317,14 @@ func noteActions(n note.Note) g.Node {
 			h.Action(fmt.Sprintf("/capture/trans/%s/%s", n.ID, event)),
 			h.Style("display:inline"),
 			h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text(label)),
+		)
+	}
+	if visible {
+		return h.Span(
+			h.Style("margin-left:0.5em"),
+			g.If(includeDone, actionBtn("done", "done")),
+			g.If(includeDone && includeReschedule, g.Text(" · ")),
+			g.If(includeReschedule, actionBtn("reschedule", "reschedule")),
 		)
 	}
 	return h.Span(
