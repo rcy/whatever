@@ -163,7 +163,7 @@ func (s *webservice) captureTasksIndex(w http.ResponseWriter, r *http.Request) {
 			if b.overdue {
 				return captureOverdueSection(b.notes)
 			}
-			return captureTaskSection(b.name, b.notes)
+			return captureTaskSection(b.name, b.notes, b.today)
 		})),
 		captureSomedaySection(someday),
 		captureDoneSection(done),
@@ -174,6 +174,7 @@ type scheduledBucket struct {
 	name    string
 	notes   []note.Note
 	overdue bool
+	today   bool
 }
 
 func partitionScheduled(notes []note.Note) []scheduledBucket {
@@ -182,8 +183,8 @@ func partitionScheduled(notes []note.Note) []scheduledBucket {
 	midnight := notesmeta.Midnight(now)
 
 	buckets := []scheduledBucket{{name: "Overdue", overdue: true}}
-	for _, tf := range notesmeta.TimeframeList {
-		buckets = append(buckets, scheduledBucket{name: tf.DisplayName})
+	for i, tf := range notesmeta.TimeframeList {
+		buckets = append(buckets, scheduledBucket{name: tf.DisplayName, today: i == 0})
 	}
 	buckets = append(buckets, scheduledBucket{name: "later"})
 
@@ -241,6 +242,45 @@ func (s *webservice) postCaptureTransition(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
+}
+
+func (s *webservice) postCaptureStar(w http.ResponseWriter, r *http.Request) {
+	noteID, err := uuid.Parse(chi.URLParam(r, "noteID"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	n, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var cmd interface{ AggregateID() uuid.UUID }
+	if n.Starred {
+		cmd = commands.UnstarNote{NoteID: noteID}
+	} else {
+		cmd = commands.StarNote{NoteID: noteID}
+	}
+	if err := s.app.Commander.Send(cmd); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
+}
+
+func starButton(n note.Note) g.Node {
+	star := "☆"
+	color := "black"
+	if n.Starred {
+		star = "★"
+		color = "red"
+	}
+	return h.Form(
+		h.Method("POST"),
+		h.Action(fmt.Sprintf("/capture/notes/%s/star", n.ID)),
+		h.Style("display:inline"),
+		h.Button(h.Type("submit"), h.Style(fmt.Sprintf("padding:0 0.25em; color:%s; font-size:1.2em; line-height:1; font-family:sans-serif", color)), g.Text(star)),
+	)
 }
 
 func scheduleButtons(n note.Note) g.Node {
@@ -371,7 +411,7 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 	)
 }
 
-func captureTaskSection(heading string, noteList []note.Note) g.Node {
+func captureTaskSection(heading string, noteList []note.Note, showStar bool) g.Node {
 	if len(noteList) == 0 {
 		return nil
 	}
@@ -380,6 +420,7 @@ func captureTaskSection(heading string, noteList []note.Note) g.Node {
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
+					g.If(showStar, starButton(n)),
 					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
 					noteActions(n),
 				)

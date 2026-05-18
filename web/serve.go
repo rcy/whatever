@@ -98,6 +98,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Get("/capture/reference", svc.captureReferenceIndex)
 		r.Post("/capture/reference", svc.postCaptureReference)
 		r.Post("/capture/trans/{noteID}/{event}", svc.postCaptureTransition)
+		r.Post("/capture/notes/{noteID}/star", svc.postCaptureStar)
 
 		r.Get("/note/{id}", svc.showNote)
 

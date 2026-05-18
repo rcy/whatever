@@ -46,6 +46,8 @@ func New(filename string) (*App, error) {
 	evoke.RegisterEvent(eventStore, &events.NoteDueCleared{})
 	evoke.RegisterEvent(eventStore, &events.NoteEnriched{})
 	evoke.RegisterEvent(eventStore, &events.NoteEnrichmentFailed{})
+	evoke.RegisterEvent(eventStore, &events.NoteStarred{})
+	evoke.RegisterEvent(eventStore, &events.NoteUnstarred{})
 
 	//
 	// COMMANDS
@@ -65,6 +67,8 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.ClearNoteDue{}, noteHandler)
 	commandBus.RegisterHandler(commands.CompleteNoteEnrichment{}, noteHandler)
 	commandBus.RegisterHandler(commands.FailNoteEnrichment{}, noteHandler)
+	commandBus.RegisterHandler(commands.StarNote{}, noteHandler)
+	commandBus.RegisterHandler(commands.UnstarNote{}, noteHandler)
 
 	//
 	// PROJECTIONS
@@ -87,6 +91,8 @@ func New(filename string) (*App, error) {
 	eventBus.Subscribe(events.NoteEnrichmentRequested{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnriched{}, noteProjection)
 	eventBus.Subscribe(events.NoteEnrichmentFailed{}, noteProjection)
+	eventBus.Subscribe(events.NoteStarred{}, noteProjection)
+	eventBus.Subscribe(events.NoteUnstarred{}, noteProjection)
 
 	// replay old events through the bus
 	err = eventStore.ReplayFrom(0, eventBus.Publish)

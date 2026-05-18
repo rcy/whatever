@@ -86,3 +86,11 @@ type NoteEnriched struct {
 type NoteEnrichmentFailed struct {
 	NoteID uuid.UUID
 }
+
+type NoteStarred struct {
+	NoteID uuid.UUID
+}
+
+type NoteUnstarred struct {
+	NoteID uuid.UUID
+}

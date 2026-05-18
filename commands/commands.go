@@ -92,3 +92,15 @@ type FailNoteEnrichment struct {
 }
 
 func (c FailNoteEnrichment) AggregateID() uuid.UUID { return c.NoteID }
+
+type StarNote struct {
+	NoteID uuid.UUID
+}
+
+func (c StarNote) AggregateID() uuid.UUID { return c.NoteID }
+
+type UnstarNote struct {
+	NoteID uuid.UUID
+}
+
+func (c UnstarNote) AggregateID() uuid.UUID { return c.NoteID }

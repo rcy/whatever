@@ -28,6 +28,7 @@ type noteAggregate struct {
 	category    string
 	subcategory string
 	due         *time.Time
+	starred     bool
 }
 
 func NewNoteAggregate(id uuid.UUID) *noteAggregate {
@@ -185,6 +186,16 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 		return []evoke.Event{events.NoteEnrichmentFailed{
 			NoteID: aggregateID,
 		}}, nil
+	case commands.StarNote:
+		if a.starred {
+			return nil, fmt.Errorf("note already starred")
+		}
+		return []evoke.Event{events.NoteStarred{NoteID: aggregateID}}, nil
+	case commands.UnstarNote:
+		if !a.starred {
+			return nil, fmt.Errorf("note not starred")
+		}
+		return []evoke.Event{events.NoteUnstarred{NoteID: aggregateID}}, nil
 	}
 
 	return nil, fmt.Errorf("unhandled")
@@ -218,6 +229,10 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 	case events.NoteEnrichmentRequested:
 	case events.NoteEnriched:
 	case events.NoteEnrichmentFailed:
+	case events.NoteStarred:
+		a.starred = true
+	case events.NoteUnstarred:
+		a.starred = false
 	default:
 		return fmt.Errorf("not handled")
 	}

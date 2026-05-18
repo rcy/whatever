@@ -20,6 +20,7 @@ type Note struct {
 	Due         *int64    `db:"due"`
 	State       string    `db:"state"`
 	Status      string    `db:"status"`
+	Starred     bool      `db:"starred"`
 }
 
 type Person struct {
@@ -35,11 +36,11 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null) strict`)
+	_, err = db.Exec(`create table notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null, starred integer not null default 0) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null) strict`)
+	_, err = db.Exec(`create table deleted_notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null, starred integer not null default 0) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
@@ -117,6 +118,12 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		return err
 	case events.NoteEnrichmentFailed:
 		_, err := p.db.Exec(`update notes set status = 'failure' where id = ?`, e.NoteID)
+		return err
+	case events.NoteStarred:
+		_, err := p.db.Exec(`update notes set starred = 1 where id = ?`, e.NoteID)
+		return err
+	case events.NoteUnstarred:
+		_, err := p.db.Exec(`update notes set starred = 0 where id = ?`, e.NoteID)
 		return err
 	default:
 		return fmt.Errorf("note projection event not handled: %T", evt)
