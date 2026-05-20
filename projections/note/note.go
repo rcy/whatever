@@ -50,6 +50,11 @@ func New() (*Projection, error) {
 		return nil, fmt.Errorf("create table note_people: %w", err)
 	}
 
+	_, err = db.Exec(`create table note_tags(note_id text not null, tag text not null) strict`)
+	if err != nil {
+		return nil, fmt.Errorf("create table note_tags: %w", err)
+	}
+
 	return &Projection{db: db}, nil
 }
 
@@ -124,6 +129,12 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		return err
 	case events.NoteUnstarred:
 		_, err := p.db.Exec(`update notes set starred = 0 where id = ?`, e.NoteID)
+		return err
+	case events.NoteTagAdded:
+		_, err := p.db.Exec(`insert into note_tags(note_id, tag) values(?,?)`, e.NoteID, e.Tag)
+		return err
+	case events.NoteTagRemoved:
+		_, err := p.db.Exec(`delete from note_tags where note_id = ? and tag = ?`, e.NoteID, e.Tag)
 		return err
 	default:
 		return fmt.Errorf("note projection event not handled: %T", evt)
@@ -224,6 +235,27 @@ func (p *Projection) CategoryCounts(owner string) ([]CategoryCount, error) {
 		return nil, fmt.Errorf("select categories: %w", err)
 	}
 	return categories, nil
+}
+
+type NoteTag struct {
+	NoteID string `db:"note_id"`
+	Tag    string `db:"tag"`
+}
+
+func (p *Projection) FindTagsForNote(noteID uuid.UUID) ([]string, error) {
+	var tags []string
+	err := p.db.Select(&tags, `select tag from note_tags where note_id = ? order by tag`, noteID)
+	return tags, err
+}
+
+func (p *Projection) FindTagsByOwnerAndCategory(owner, category string) ([]NoteTag, error) {
+	var tags []NoteTag
+	err := p.db.Select(&tags,
+		`select nt.note_id, nt.tag from note_tags nt
+		 join notes n on nt.note_id = n.id
+		 where n.owner = ? and n.category = ?
+		 order by nt.tag`, owner, category)
+	return tags, err
 }
 
 type SubcategoryCount struct {

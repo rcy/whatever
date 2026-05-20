@@ -29,6 +29,7 @@ type noteAggregate struct {
 	subcategory string
 	due         *time.Time
 	starred     bool
+	tags        []string
 }
 
 func NewNoteAggregate(id uuid.UUID) *noteAggregate {
@@ -196,6 +197,24 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("note not starred")
 		}
 		return []evoke.Event{events.NoteUnstarred{NoteID: aggregateID}}, nil
+	case commands.AddNoteTag:
+		tag := strings.TrimSpace(c.Tag)
+		if tag == "" {
+			return nil, fmt.Errorf("tag cannot be empty")
+		}
+		for _, t := range a.tags {
+			if t == tag {
+				return nil, fmt.Errorf("tag already exists: %s", tag)
+			}
+		}
+		return []evoke.Event{events.NoteTagAdded{NoteID: aggregateID, Tag: tag}}, nil
+	case commands.RemoveNoteTag:
+		for _, t := range a.tags {
+			if t == c.Tag {
+				return []evoke.Event{events.NoteTagRemoved{NoteID: aggregateID, Tag: c.Tag}}, nil
+			}
+		}
+		return nil, fmt.Errorf("tag not found: %s", c.Tag)
 	}
 
 	return nil, fmt.Errorf("unhandled")
@@ -233,6 +252,16 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 		a.starred = true
 	case events.NoteUnstarred:
 		a.starred = false
+	case events.NoteTagAdded:
+		a.tags = append(a.tags, evt.Tag)
+	case events.NoteTagRemoved:
+		filtered := a.tags[:0]
+		for _, t := range a.tags {
+			if t != evt.Tag {
+				filtered = append(filtered, t)
+			}
+		}
+		a.tags = filtered
 	default:
 		return fmt.Errorf("not handled")
 	}

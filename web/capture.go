@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -11,6 +12,7 @@ import (
 	"github.com/rcy/whatever/catalog/notesmeta"
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/projections/note"
+	"github.com/starfederation/datastar-go/datastar"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -221,9 +223,21 @@ func (s *webservice) captureReferenceIndex(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	slices.Reverse(noteList)
+
+	noteTags, err := s.app.Notes.FindTagsByOwnerAndCategory(userInfo.Id, "reference")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tagMap := map[uuid.UUID][]string{}
+	for _, nt := range noteTags {
+		id, _ := uuid.Parse(nt.NoteID)
+		tagMap[id] = append(tagMap[id], nt.Tag)
+	}
+
 	capturePage(g.Group{
 		captureNavWithRequest(r, "/capture/reference"),
-		captureNoteList(noteList),
+		captureNoteList(noteList, tagMap),
 	}).Render(w)
 }
 
@@ -336,11 +350,45 @@ func captureNotnowSection(noteList []note.Note) g.Node {
 	)
 }
 
-func captureNoteList(noteList []note.Note) g.Node {
+func captureNoteList(noteList []note.Note, tagMap map[uuid.UUID][]string) g.Node {
 	return h.Div(h.Class("note-list"),
 		g.Map(noteList, func(n note.Note) g.Node {
-			return h.Div(h.Class("note-item"), g.Text(n.Text))
+			return captureNoteItem(n, tagMap[n.ID])
 		}),
+	)
+}
+
+// noteTagSignal returns the per-note signal name for the tag input.
+func noteTagSignal(id uuid.UUID) string {
+	return "nt_" + strings.ReplaceAll(id.String(), "-", "_")
+}
+
+func captureNoteItem(n note.Note, tags []string) g.Node {
+	sig := noteTagSignal(n.ID)
+	return h.Div(
+		h.ID("capture-note-"+n.ID.String()),
+		h.Class("note-item"),
+		g.Attr("data-signals", fmt.Sprintf(`{"%s":""}`, sig)),
+		h.Div(h.Style("display:flex; flex-wrap:wrap; gap:0.25em; align-items:baseline"),
+			h.Span(g.Text(n.Text)),
+			g.Map(tags, func(tag string) g.Node {
+				return h.Button(
+					h.Style("color:#555; background:#eee; border:1px solid #ccc; border-radius:3px; padding:0 0.4em; cursor:pointer; font-size:0.85em"),
+					g.Attr("data-on:click", fmt.Sprintf("@post('/capture/notes/%s/tags/%s/remove')", n.ID, tag)),
+					g.Text(tag+" ×"),
+				)
+			}),
+			h.Form(
+				g.Attr("data-on:submit", fmt.Sprintf("@post('/capture/notes/%s/tags')", n.ID)),
+				h.Style("display:inline"),
+				h.Input(
+					g.Attr("data-bind", sig),
+					h.Type("text"),
+					h.Style("width:7em; font-size:0.85em"),
+					h.Placeholder("add tag"),
+				),
+			),
+		),
 	)
 }
 
@@ -427,6 +475,57 @@ func captureTaskSection(heading string, noteList []note.Note, showStar bool) g.N
 			}),
 		),
 	)
+}
+
+func (s *webservice) postAddNoteTag(w http.ResponseWriter, r *http.Request) {
+	noteID, err := uuid.Parse(chi.URLParam(r, "noteID"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sig := noteTagSignal(noteID)
+	var sigs map[string]interface{}
+	if err := datastar.ReadSignals(r, &sigs); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tag := strings.TrimSpace(fmt.Sprintf("%v", sigs[sig]))
+
+	if tag != "" {
+		_ = s.app.Commander.Send(commands.AddNoteTag{NoteID: noteID, Tag: tag}) // ignore duplicate
+	}
+
+	n, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tags, _ := s.app.Notes.FindTagsForNote(noteID)
+
+	sse := datastar.NewSSE(w, r)
+	sse.MarshalAndPatchSignals(map[string]string{sig: ""})
+	sse.PatchElementGostar(captureNoteItem(n, tags))
+}
+
+func (s *webservice) postRemoveNoteTag(w http.ResponseWriter, r *http.Request) {
+	noteID, err := uuid.Parse(chi.URLParam(r, "noteID"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tag := chi.URLParam(r, "tag")
+	_ = s.app.Commander.Send(commands.RemoveNoteTag{NoteID: noteID, Tag: tag})
+
+	n, err := s.app.Notes.FindOne(noteID.String())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tags, _ := s.app.Notes.FindTagsForNote(noteID)
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementGostar(captureNoteItem(n, tags))
 }
 
 func (s *webservice) settingsIndex(w http.ResponseWriter, r *http.Request) {

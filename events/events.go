@@ -94,3 +94,13 @@ type NoteStarred struct {
 type NoteUnstarred struct {
 	NoteID uuid.UUID
 }
+
+type NoteTagAdded struct {
+	NoteID uuid.UUID
+	Tag    string
+}
+
+type NoteTagRemoved struct {
+	NoteID uuid.UUID
+	Tag    string
+}
