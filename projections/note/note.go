@@ -242,6 +242,36 @@ type NoteTag struct {
 	Tag    string `db:"tag"`
 }
 
+func (p *Projection) FindUntaggedByCategory(owner, category string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList,
+		`select * from notes
+		 where owner = ? and category = ?
+		 and id not in (select distinct note_id from note_tags)
+		 order by ts desc`, owner, category)
+	return noteList, err
+}
+
+func (p *Projection) FindAllByCategoryAndTag(owner, category, tag string) ([]Note, error) {
+	var noteList []Note
+	err := p.db.Select(&noteList,
+		`select distinct notes.* from notes
+		 join note_tags on note_tags.note_id = notes.id
+		 where notes.owner = ? and notes.category = ? and note_tags.tag = ?
+		 order by notes.ts desc`, owner, category, tag)
+	return noteList, err
+}
+
+func (p *Projection) FindAllTagsForOwner(owner string) ([]string, error) {
+	var tags []string
+	err := p.db.Select(&tags,
+		`select distinct tag from note_tags
+		 join notes on note_tags.note_id = notes.id
+		 where notes.owner = ?
+		 order by tag`, owner)
+	return tags, err
+}
+
 func (p *Projection) FindTagsForNote(noteID uuid.UUID) ([]string, error) {
 	var tags []string
 	err := p.db.Select(&tags, `select tag from note_tags where note_id = ? order by tag`, noteID)
