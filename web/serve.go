@@ -101,6 +101,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Post("/capture/notes/{noteID}/star", svc.postCaptureStar)
 
 		r.Get("/note/{id}", svc.showNote)
+		r.Post("/note/{id}/edit", svc.postEditNote)
 
 		r.Get("/events", svc.eventsIndex)
 
@@ -283,6 +284,29 @@ func (s *webservice) showNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	content.Render(w)
+}
+
+func (s *webservice) postEditNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	noteID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	body := r.FormValue("body")
+	if body == "" {
+		http.Error(w, "body is required", http.StatusBadRequest)
+		return
+	}
+
+	err = s.app.Commander.Send(commands.UpdateNoteText{NoteID: noteID, Text: body})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
 }
 
 func noteLinksEl(note note.Note) (g.Node, error) {

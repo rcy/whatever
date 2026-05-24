@@ -74,7 +74,7 @@ func capturePage(body g.Node) g.Node {
 			h.StyleEl(captureStyles),
 		),
 		h.Body(
-			g.Attr("data-signals", `{"activeNote":""}`),
+			g.Attr("data-signals", `{"activeNote":"","editNote":""}`),
 			body,
 		),
 	)
@@ -302,6 +302,28 @@ func scheduleButtons(n note.Note) g.Node {
 	)
 }
 
+func inlineEditForm(n note.Note) g.Node {
+	return h.Form(
+		h.Method("POST"),
+		h.Action(fmt.Sprintf("/note/%s/edit", n.ID)),
+		h.Style("display:none"),
+		g.Attr("data-show", fmt.Sprintf("$editNote === '%s'", n.ID)),
+		h.Textarea(
+			h.Name("body"),
+			h.Rows("3"),
+			h.Style("width:100%; font-family:monospace; font-size:16px; box-sizing:border-box"),
+			g.Text(n.Text),
+		),
+		h.Div(h.Style("display:flex; gap:0.5em; margin-top:0.25em"),
+			h.Button(h.Type("submit"), g.Text("save")),
+			h.Button(h.Type("button"),
+				g.Attr("data-on:click", "$editNote = ''"),
+				g.Text("cancel"),
+			),
+		),
+	)
+}
+
 func captureOverdueSection(noteList []note.Note) g.Node {
 	if len(noteList) == 0 {
 		return nil
@@ -311,8 +333,12 @@ func captureOverdueSection(noteList []note.Note) g.Node {
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
-					h.Span(g.Text(n.Text)),
-					noteActionsVisible(n, true),
+					h.Span(
+						g.Attr("data-show", fmt.Sprintf("$editNote !== '%s'", n.ID)),
+						h.Span(g.Text(n.Text)),
+						noteActionsVisible(n, true),
+					),
+					inlineEditForm(n),
 				)
 			}),
 		),
@@ -359,12 +385,20 @@ func noteActionsVisible(n note.Note, visible bool) g.Node {
 			h.Button(h.Type("submit"), h.Style("color:gray; padding:0"), g.Text(label)),
 		)
 	}
+	editBtn := h.Button(
+		h.Type("button"),
+		h.Style("color:gray; padding:0"),
+		g.Attr("data-on:click", fmt.Sprintf("$editNote = '%s'", n.ID)),
+		g.Text("edit"),
+	)
 	if visible {
 		return h.Span(
 			h.Style("margin-left:0.5em"),
 			g.If(includeDone, actionBtn("done", "done")),
 			g.If(includeDone && includeReschedule, g.Text(" · ")),
 			g.If(includeReschedule, actionBtn("reschedule", "reschedule")),
+			g.Text(" · "),
+			editBtn,
 		)
 	}
 	return h.Span(
@@ -374,6 +408,8 @@ func noteActionsVisible(n note.Note, visible bool) g.Node {
 		g.If(includeDone, actionBtn("done", "done")),
 		g.If(includeDone && includeReschedule, g.Text(" · ")),
 		g.If(includeReschedule, actionBtn("reschedule", "reschedule")),
+		g.Text(" · "),
+		editBtn,
 	)
 }
 
@@ -386,8 +422,12 @@ func captureDoneSection(noteList []note.Note) g.Node {
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
-					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
-					noteActions(n),
+					h.Span(
+						g.Attr("data-show", fmt.Sprintf("$editNote !== '%s'", n.ID)),
+						h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
+						noteActions(n),
+					),
+					inlineEditForm(n),
 				)
 			}),
 		),
@@ -403,8 +443,12 @@ func captureSomedaySection(noteList []note.Note) g.Node {
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
-					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
-					noteActions(n),
+					h.Span(
+						g.Attr("data-show", fmt.Sprintf("$editNote !== '%s'", n.ID)),
+						h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
+						noteActions(n),
+					),
+					inlineEditForm(n),
 				)
 			}),
 		),
@@ -420,9 +464,13 @@ func captureTaskSection(heading string, noteList []note.Note, showStar bool) g.N
 		h.Div(h.Class("note-list"),
 			g.Map(noteList, func(n note.Note) g.Node {
 				return h.Div(h.Class("note-item"),
-					g.If(showStar, starButton(n)),
-					h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
-					noteActions(n),
+					h.Span(
+						g.Attr("data-show", fmt.Sprintf("$editNote !== '%s'", n.ID)),
+						g.If(showStar, starButton(n)),
+						h.Span(g.Attr("data-on:click", fmt.Sprintf("$activeNote = $activeNote === '%s' ? '' : '%s'", n.ID, n.ID)), h.Style("cursor:pointer"), g.Text(n.Text)),
+						noteActions(n),
+					),
+					inlineEditForm(n),
 				)
 			}),
 		),
