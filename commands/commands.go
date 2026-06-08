@@ -104,3 +104,17 @@ type UnstarNote struct {
 }
 
 func (c UnstarNote) AggregateID() uuid.UUID { return c.NoteID }
+
+type AddNoteTag struct {
+	NoteID uuid.UUID
+	Tag    string
+}
+
+func (c AddNoteTag) AggregateID() uuid.UUID { return c.NoteID }
+
+type RemoveNoteTag struct {
+	NoteID uuid.UUID
+	Tag    string
+}
+
+func (c RemoveNoteTag) AggregateID() uuid.UUID { return c.NoteID }
