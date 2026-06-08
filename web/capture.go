@@ -444,7 +444,7 @@ func captureNoteItem(n note.Note, tags []string) g.Node {
 			}),
 			h.Form(
 				g.Attr("data-on:submit", fmt.Sprintf("@post('/capture/notes/%s/tags')", n.ID)),
-				h.Style("display:inline"),
+				h.Style("display:contents"),
 				h.Input(
 					g.Attr("data-bind", sig),
 					h.Type("text"),
