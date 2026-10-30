@@ -83,7 +83,7 @@ func capturePage(body g.Node) g.Node {
 }
 
 func (s *webservice) captureIndex(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/capture/tasks", http.StatusSeeOther)
+	http.Redirect(w, r, "/capture/reference", http.StatusSeeOther)
 }
 
 func (s *webservice) postCaptureTask(w http.ResponseWriter, r *http.Request) {
