@@ -104,3 +104,14 @@ type NoteTagRemoved struct {
 	NoteID uuid.UUID
 	Tag    string
 }
+
+type NoteSummaryRequested struct {
+	NoteID      uuid.UUID
+	RequestedAt time.Time
+	Text        string
+}
+
+type NoteSummarized struct {
+	NoteID  uuid.UUID
+	Summary string
+}
