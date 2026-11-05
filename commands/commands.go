@@ -118,3 +118,10 @@ type RemoveNoteTag struct {
 }
 
 func (c RemoveNoteTag) AggregateID() uuid.UUID { return c.NoteID }
+
+type SummarizeNote struct {
+	NoteID  uuid.UUID
+	Summary string
+}
+
+func (c SummarizeNote) AggregateID() uuid.UUID { return c.NoteID }
