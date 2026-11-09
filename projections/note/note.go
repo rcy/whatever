@@ -15,6 +15,7 @@ type Note struct {
 	Owner       string    `db:"owner"`
 	Ts          int64     `db:"ts"`
 	Text        string    `db:"text"`
+	Summary     string    `db:"summary"`
 	Category    string    `db:"category"`
 	Subcategory string    `db:"subcategory"`
 	Due         *int64    `db:"due"`
@@ -36,11 +37,11 @@ func New() (*Projection, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`create table notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null, starred integer not null default 0) strict`)
+	_, err = db.Exec(`create table notes(id text primary key, owner text not null, ts integer not null, text text not null, summary text not null default '', category text not null, subcategory text not null, due integer, state text not null, status text not null, starred integer not null default 0) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table notes: %w", err)
 	}
-	_, err = db.Exec(`create table deleted_notes(id text primary key, owner text not null, ts integer not null, text text not null, category text not null, subcategory text not null, due integer, state text not null, status text not null, starred integer not null default 0) strict`)
+	_, err = db.Exec(`create table deleted_notes(id text primary key, owner text not null, ts integer not null, text text not null, summary text not null default '', category text not null, subcategory text not null, due integer, state text not null, status text not null, starred integer not null default 0) strict`)
 	if err != nil {
 		return nil, fmt.Errorf("create table deleted_notes: %w", err)
 	}
@@ -61,8 +62,8 @@ func New() (*Projection, error) {
 func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 	switch e := evt.(type) {
 	case events.NoteCreated:
-		q := `insert into notes(id, owner, ts, text, category, subcategory, due, state, status) values(?,?,?,?,?,?,?,?,?)`
-		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt.UTC().Unix(), e.Text, e.Category, e.Subcategory, nil, "open", "")
+		q := `insert into notes(id, owner, ts, text, summary, category, subcategory, due, state, status) values(?,?,?,?,?,?,?,?,?,?)`
+		_, err := p.db.Exec(q, e.NoteID, e.Owner, e.CreatedAt.UTC().Unix(), e.Text, "", e.Category, e.Subcategory, nil, "open", "")
 		if err != nil {
 			return fmt.Errorf("Exec: %w", err)
 		}
@@ -135,6 +136,9 @@ func (p *Projection) Handle(evt evoke.Event, replaying bool) error {
 		return err
 	case events.NoteTagRemoved:
 		_, err := p.db.Exec(`delete from note_tags where note_id = ? and tag = ?`, e.NoteID, e.Tag)
+		return err
+	case events.NoteSummarized:
+		_, err := p.db.Exec(`update notes set summary = ? where id = ?`, e.Summary, e.NoteID)
 		return err
 	default:
 		return fmt.Errorf("note projection event not handled: %T", evt)

@@ -13,6 +13,7 @@ import (
 	"github.com/rcy/whatever/projections/note"
 	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
+	"github.com/rcy/whatever/workers/summarize"
 )
 
 type App struct {
@@ -22,6 +23,7 @@ type App struct {
 		DebugEvents() ([]evoke.RecordedEvent, error)
 	}
 	classify *classify.Worker
+	summarize *summarize.Worker
 }
 
 func New(filename string) (*App, error) {
@@ -50,6 +52,8 @@ func New(filename string) (*App, error) {
 	evoke.RegisterEvent(eventStore, &events.NoteUnstarred{})
 	evoke.RegisterEvent(eventStore, &events.NoteTagAdded{})
 	evoke.RegisterEvent(eventStore, &events.NoteTagRemoved{})
+	evoke.RegisterEvent(eventStore, &events.NoteSummaryRequested{})
+	evoke.RegisterEvent(eventStore, &events.NoteSummarized{})
 
 	//
 	// COMMANDS
@@ -73,6 +77,7 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.UnstarNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.AddNoteTag{}, noteHandler)
 	commandBus.RegisterHandler(commands.RemoveNoteTag{}, noteHandler)
+	commandBus.RegisterHandler(commands.SummarizeNote{}, noteHandler)
 
 	//
 	// PROJECTIONS
@@ -99,6 +104,7 @@ func New(filename string) (*App, error) {
 	eventBus.Subscribe(events.NoteUnstarred{}, noteProjection)
 	eventBus.Subscribe(events.NoteTagAdded{}, noteProjection)
 	eventBus.Subscribe(events.NoteTagRemoved{}, noteProjection)
+	eventBus.Subscribe(events.NoteSummarized{}, noteProjection)
 
 	// replay old events through the bus
 	err = eventStore.ReplayFrom(0, eventBus.Publish)
@@ -116,6 +122,9 @@ func New(filename string) (*App, error) {
 	classifyWorker := classify.NewWorker(commandBus)
 	eventBus.Subscribe(events.NoteCreated{}, classifyWorker)
 
+	summarizeWorker := summarize.NewWorker(commandBus)
+	eventBus.Subscribe(events.NoteSummaryRequested{}, summarizeWorker)
+
 	err = migrateOwnerlessNotes(noteProjection, commandBus)
 	if err != nil {
 		return nil, err
@@ -126,6 +135,7 @@ func New(filename string) (*App, error) {
 		Notes:         noteProjection,
 		EventDebugger: eventStore,
 		classify:      classifyWorker,
+		summarize:     summarizeWorker,
 	}, nil
 }
 

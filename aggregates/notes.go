@@ -29,6 +29,7 @@ type noteAggregate struct {
 	subcategory string
 	due         *time.Time
 	starred     bool
+	summary     string
 	tags        []string
 }
 
@@ -83,6 +84,11 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 				RequestedAt: time.Now(),
 				Text:        text,
 			})
+			eventList = append(eventList, events.NoteSummaryRequested{
+				NoteID:      aggregateID,
+				RequestedAt: time.Now(),
+				Text:        text,
+			})
 		}
 
 		return eventList, nil
@@ -114,6 +120,11 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 		// TODO: better matching here
 		if strings.HasPrefix(text, "http") {
 			eventList = append(eventList, events.NoteEnrichmentRequested{
+				NoteID:      aggregateID,
+				RequestedAt: time.Now(),
+				Text:        text,
+			})
+			eventList = append(eventList, events.NoteSummaryRequested{
 				NoteID:      aggregateID,
 				RequestedAt: time.Now(),
 				Text:        text,
@@ -215,6 +226,11 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			}
 		}
 		return nil, fmt.Errorf("tag not found: %s", c.Tag)
+	case commands.SummarizeNote:
+		return []evoke.Event{events.NoteSummarized{
+			NoteID:  aggregateID,
+			Summary: c.Summary,
+		}}, nil
 	}
 
 	return nil, fmt.Errorf("unhandled")
@@ -246,12 +262,15 @@ func (a *noteAggregate) Apply(e evoke.Event) error {
 	case events.NoteDueCleared:
 		a.due = nil
 	case events.NoteEnrichmentRequested:
+	case events.NoteSummaryRequested:
 	case events.NoteEnriched:
 	case events.NoteEnrichmentFailed:
 	case events.NoteStarred:
 		a.starred = true
 	case events.NoteUnstarred:
 		a.starred = false
+	case events.NoteSummarized:
+		a.summary = evt.Summary
 	case events.NoteTagAdded:
 		a.tags = append(a.tags, evt.Tag)
 	case events.NoteTagRemoved:
