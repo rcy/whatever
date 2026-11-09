@@ -50,6 +50,7 @@ func New(filename string) (*App, error) {
 	evoke.RegisterEvent(eventStore, &events.NoteUnstarred{})
 	evoke.RegisterEvent(eventStore, &events.NoteTagAdded{})
 	evoke.RegisterEvent(eventStore, &events.NoteTagRemoved{})
+	evoke.RegisterEvent(eventStore, &events.WebhookReceived{})
 
 	//
 	// COMMANDS
@@ -73,6 +74,10 @@ func New(filename string) (*App, error) {
 	commandBus.RegisterHandler(commands.UnstarNote{}, noteHandler)
 	commandBus.RegisterHandler(commands.AddNoteTag{}, noteHandler)
 	commandBus.RegisterHandler(commands.RemoveNoteTag{}, noteHandler)
+
+	webhookFactory := func(id uuid.UUID) evoke.Aggregate { return aggregates.NewWebhookAggregate(id) }
+	webhookHandler := evoke.NewAggregateHandler(eventStore, webhookFactory)
+	commandBus.RegisterHandler(commands.ReceiveWebhook{}, webhookHandler)
 
 	//
 	// PROJECTIONS

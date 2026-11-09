@@ -19,6 +19,8 @@ type ServeCmd struct {
 	GoogleClientID     string `env:"GOOGLE_CLIENT_ID"`
 	GoogleClientSecret string `env:"GOOGLE_CLIENT_SECRET"`
 	SessionSecret      string `env:"SESSION_SECRET"`
+	WebhookToken       string `env:"WEBHOOK_TOKEN"`
+	OwnerID            string `env:"OWNER_ID"`
 }
 
 func (c *ServeCmd) Run(app *app.App) error {
@@ -32,6 +34,8 @@ func (c *ServeCmd) Run(app *app.App) error {
 		GoogleClientID:     c.GoogleClientID,
 		GoogleClientSecret: c.GoogleClientSecret,
 		SessionSecret:      c.SessionSecret,
+		WebhookToken:       c.WebhookToken,
+		OwnerID:            c.OwnerID,
 	})
 	if err != nil {
 		return err

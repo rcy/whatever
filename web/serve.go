@@ -36,14 +36,18 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	SessionSecret      string
+	WebhookToken       string
+	OwnerID            string
 }
 
 type webservice struct {
-	app         *app.App
-	oauthConfig *oauth2.Config
-	sessions    *sessionManager
-	states      stateManager
-	baseURL     string
+	app          *app.App
+	oauthConfig  *oauth2.Config
+	sessions     *sessionManager
+	states       stateManager
+	baseURL      string
+	webhookToken string
+	ownerID      string
 }
 
 func Server(app *app.App, cfg Config) (*chi.Mux, error) {
@@ -52,6 +56,12 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	}
 	if cfg.GoogleClientID == "" || cfg.GoogleClientSecret == "" {
 		return nil, errors.New("web: google oauth client id and secret are required")
+	}
+	if cfg.WebhookToken == "" {
+		return nil, errors.New("web: WEBHOOK_TOKEN is required")
+	}
+	if cfg.OwnerID == "" {
+		return nil, errors.New("web: OWNER_ID is required")
 	}
 	sessions, err := newSessionManager(cfg.SessionSecret)
 	if err != nil {
@@ -72,9 +82,11 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 			},
 			Endpoint: google.Endpoint,
 		},
-		sessions: sessions,
-		states:   stateManager{},
-		baseURL:  baseURL,
+		sessions:     sessions,
+		states:       stateManager{},
+		baseURL:      baseURL,
+		webhookToken: cfg.WebhookToken,
+		ownerID:      cfg.OwnerID,
 	}
 
 	r := chi.NewRouter()
@@ -83,6 +95,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	r.Get("/auth", svc.authHandler)
 	r.Get("/auth/callback", svc.authCallbackHandler)
 	r.Get("/logout", svc.logoutHandler)
+	r.Post("/webhook/note", svc.postWebhookNote)
 
 	r.Group(func(r chi.Router) {
 		r.Use(svc.authMiddleware)

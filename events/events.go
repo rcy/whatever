@@ -104,3 +104,10 @@ type NoteTagRemoved struct {
 	NoteID uuid.UUID
 	Tag    string
 }
+
+type WebhookReceived struct {
+	WebhookID  uuid.UUID
+	Owner      string
+	ReceivedAt time.Time
+	Fields     map[string]string
+}
