@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/rcy/whatever/commands"
 )
@@ -72,6 +73,7 @@ func (s *webservice) postWebhookNote(w http.ResponseWriter, r *http.Request) {
 	err = s.app.Commander.Send(commands.ReceiveWebhook{
 		WebhookID: webhookID,
 		Owner:     s.ownerID,
+		Path:      chi.URLParam(r, "source"),
 		Fields:    fields,
 	})
 	if err != nil {

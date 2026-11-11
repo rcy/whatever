@@ -122,6 +122,7 @@ func (c RemoveNoteTag) AggregateID() uuid.UUID { return c.NoteID }
 type ReceiveWebhook struct {
 	WebhookID uuid.UUID
 	Owner     string
+	Path      string
 	Fields    map[string]string
 }
 

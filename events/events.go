@@ -109,5 +109,6 @@ type WebhookReceived struct {
 	WebhookID  uuid.UUID
 	Owner      string
 	ReceivedAt time.Time
+	Path       string
 	Fields     map[string]string
 }

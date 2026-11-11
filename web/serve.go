@@ -95,7 +95,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	r.Get("/auth", svc.authHandler)
 	r.Get("/auth/callback", svc.authCallbackHandler)
 	r.Get("/logout", svc.logoutHandler)
-	r.Post("/webhook/note", svc.postWebhookNote)
+	r.Post("/webhook/{source}", svc.postWebhookNote)
 
 	r.Group(func(r chi.Router) {
 		r.Use(svc.authMiddleware)

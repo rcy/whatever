@@ -26,6 +26,7 @@ func (a *webhookAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, erro
 				WebhookID:  c.WebhookID,
 				Owner:      c.Owner,
 				ReceivedAt: time.Now(),
+				Path:       c.Path,
 				Fields:     c.Fields,
 			},
 		}, nil
