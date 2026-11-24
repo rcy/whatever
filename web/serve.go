@@ -48,6 +48,7 @@ type webservice struct {
 	baseURL      string
 	webhookToken string
 	ownerID      string
+	oauth        *oauthServer
 }
 
 func Server(app *app.App, cfg Config) (*chi.Mux, error) {
@@ -87,6 +88,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		baseURL:      baseURL,
 		webhookToken: cfg.WebhookToken,
 		ownerID:      cfg.OwnerID,
+		oauth:        newOAuthServer(cfg.SessionSecret, baseURL, cfg.OwnerID),
 	}
 
 	r := chi.NewRouter()
@@ -96,6 +98,17 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	r.Get("/auth/callback", svc.authCallbackHandler)
 	r.Get("/logout", svc.logoutHandler)
 	r.Post("/webhook/{source}", svc.postWebhookNote)
+
+	// MCP server, protected by our own OAuth authorization server
+	r.With(cors).Handle("/mcp", svc.mcpHandler())
+	r.With(cors).Handle("/.well-known/oauth-protected-resource", svc.oauth.protectedResourceMetadata())
+	r.With(cors).Handle("/.well-known/oauth-protected-resource/mcp", svc.oauth.protectedResourceMetadata())
+	r.With(cors).HandleFunc("/.well-known/oauth-authorization-server", svc.oauth.authServerMetadata)
+	r.With(cors).Post("/oauth/register", svc.oauth.register)
+	r.With(cors).Post("/oauth/token", svc.oauth.token)
+	r.With(cors).Options("/oauth/*", func(http.ResponseWriter, *http.Request) {})
+	r.With(svc.authMiddleware).Get("/oauth/authorize", svc.oauthAuthorize)
+	r.With(svc.authMiddleware).Post("/oauth/authorize", svc.oauthAuthorizeDecision)
 
 	r.Group(func(r chi.Router) {
 		r.Use(svc.authMiddleware)

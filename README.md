@@ -67,6 +67,25 @@ $ whatever serve
 listening on http://localhost:9999
 ```
 
+#### MCP server
+
+A read-only [MCP](https://modelcontextprotocol.io) endpoint is served at
+`/mcp` with `OWNER_ID`'s notes. Tools: `notes_overview`, `list_notes`
+(search/filter), `get_note`.
+
+It is protected by a built-in OAuth 2.1 authorization server (dynamic client
+registration, PKCE) that delegates login to Google; only `OWNER_ID` can
+authorize. Tokens are signed with `SESSION_SECRET`, so rotating it revokes
+them all. `BASE_URL` must be the public URL.
+
+```sh
+# Claude Code
+claude mcp add --transport http whatever https://<host>/mcp
+# then run /mcp in Claude Code to log in
+
+# claude.ai: Settings → Connectors → Add custom connector → https://<host>/mcp
+```
+
 ### Reporting bugs, feature requests, or whatever
 
 ```sh
