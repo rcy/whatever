@@ -13,13 +13,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/rcy/whatever/app"
+	"github.com/rcy/whatever/commands"
 	googleoauth "google.golang.org/api/oauth2/v2"
 )
 
 const testSecret = "0123456789abcdef0123456789abcdef"
 
-func newTestServer(t *testing.T) *httptest.Server {
+func newTestServer(t *testing.T) (*httptest.Server, *app.App) {
 	t.Helper()
 	a, err := app.New(filepath.Join(t.TempDir(), "events.db"))
 	if err != nil {
@@ -40,7 +42,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	ts.Config.Handler = mux
 	ts.Start()
 	t.Cleanup(ts.Close)
-	return ts
+	return ts, a
 }
 
 func sessionCookie(t *testing.T, userID string) *http.Cookie {
@@ -78,7 +80,7 @@ func authorizeURL(base, clientID, redirectURI, challenge string) string {
 }
 
 func TestOAuthFlow(t *testing.T) {
-	ts := newTestServer(t)
+	ts, _ := newTestServer(t)
 	base := ts.URL
 
 	// unauthenticated MCP request points at resource metadata
@@ -126,14 +128,6 @@ func TestOAuthFlow(t *testing.T) {
 	resp, _ = noRedirect.Do(req)
 	if resp.StatusCode != 400 {
 		t.Fatalf("mismatched redirect: %d", resp.StatusCode)
-	}
-
-	// non-owner is denied
-	req, _ = http.NewRequest("GET", authURL, nil)
-	req.AddCookie(sessionCookie(t, "stranger"))
-	resp, _ = noRedirect.Do(req)
-	if loc := resp.Header.Get("Location"); !strings.Contains(loc, "error=access_denied") {
-		t.Fatalf("non-owner: %d %s", resp.StatusCode, loc)
 	}
 
 	// owner sees consent page
@@ -197,5 +191,80 @@ func TestOAuthFlow(t *testing.T) {
 	status, tok2 := tokenReq(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {tok["refresh_token"].(string)}, "client_id": {clientID}})
 	if status != 200 || callMCP(tok2["access_token"].(string)) != 200 {
 		t.Fatalf("refresh: %d %v", status, tok2)
+	}
+}
+
+// obtainToken runs the register/authorize/token flow as userID and returns an access token.
+func obtainToken(t *testing.T, base, userID string) string {
+	t.Helper()
+	redirectURI := "http://127.0.0.1:5555/cb"
+	resp, _ := http.Post(base+"/oauth/register", "application/json", strings.NewReader(`{"redirect_uris":["`+redirectURI+`"]}`))
+	clientID := decode(t, resp)["client_id"].(string)
+
+	verifier := "another-long-random-code-verifier-string-0123456789"
+	sum := sha256.Sum256([]byte(verifier))
+	cookie := sessionCookie(t, userID)
+
+	req, _ := http.NewRequest("GET", authorizeURL(base, clientID, redirectURI, base64.RawURLEncoding.EncodeToString(sum[:])), nil)
+	req.AddCookie(cookie)
+	resp, _ = noRedirect.Do(req)
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	consent := regexp.MustCompile(`name="consent" value="([^"]+)"`).FindSubmatch(body)[1]
+
+	req, _ = http.NewRequest("POST", base+"/oauth/authorize", strings.NewReader(url.Values{"consent": {string(consent)}, "decision": {"allow"}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(cookie)
+	resp, _ = noRedirect.Do(req)
+	loc, _ := url.Parse(resp.Header.Get("Location"))
+
+	resp, _ = http.PostForm(base+"/oauth/token", url.Values{"grant_type": {"authorization_code"}, "code": {loc.Query().Get("code")}, "client_id": {clientID}, "redirect_uri": {redirectURI}, "code_verifier": {verifier}})
+	return decode(t, resp)["access_token"].(string)
+}
+
+func mcpCall(t *testing.T, base, token, tool string, args any) map[string]any {
+	t.Helper()
+	params, _ := json.Marshal(map[string]any{"name": tool, "arguments": args})
+	req, _ := http.NewRequest("POST", base+"/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":`+string(params)+`}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, _ := http.DefaultClient.Do(req)
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	// stateless responses are a single SSE "data:" line
+	_, data, _ := strings.Cut(string(body), "data: ")
+	var out struct{ Result map[string]any }
+	if err := json.Unmarshal([]byte(strings.TrimSpace(data)), &out); err != nil {
+		t.Fatalf("mcp %s: %v: %s", tool, err, body)
+	}
+	return out.Result
+}
+
+func TestMCPUserIsolation(t *testing.T) {
+	ts, a := newTestServer(t)
+	aliceNote, bobNote := uuid.New(), uuid.New()
+	for _, c := range []commands.CreateNote{
+		{Owner: "alice", NoteID: aliceNote, Text: "alice secret", Category: "task", Subcategory: "notnow"},
+		{Owner: "bob", NoteID: bobNote, Text: "bob secret", Category: "task", Subcategory: "notnow"},
+	} {
+		if err := a.Commander.Send(c); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	alice := obtainToken(t, ts.URL, "alice")
+
+	list := mcpCall(t, ts.URL, alice, "list_notes", map[string]any{})
+	notes := list["structuredContent"].(map[string]any)["notes"].([]any)
+	if len(notes) != 1 || notes[0].(map[string]any)["text"] != "alice secret" {
+		t.Fatalf("alice list: %v", notes)
+	}
+
+	if got := mcpCall(t, ts.URL, alice, "get_note", map[string]any{"id": aliceNote.String()}); got["isError"] == true {
+		t.Fatalf("alice get own note: %v", got)
+	}
+	if got := mcpCall(t, ts.URL, alice, "get_note", map[string]any{"id": bobNote.String()}); got["isError"] != true {
+		t.Fatalf("alice read bob's note: %v", got)
 	}
 }

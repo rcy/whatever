@@ -67,7 +67,7 @@ type overviewOutput struct {
 
 func (s *webservice) mcpHandler() http.Handler {
 	server := mcp.NewServer(&mcp.Implementation{Name: "whatever", Version: "1.0.0"}, &mcp.ServerOptions{
-		Instructions: "Read-only access to the owner's notes. Call notes_overview first to learn the category, subcategory, tag and people slugs, then list_notes to filter or search.",
+		Instructions: "Read-only access to the signed-in user's notes. Call notes_overview first to learn the category, subcategory, tag and people slugs, then list_notes to filter or search.",
 	})
 
 	readOnly := &mcp.ToolAnnotations{ReadOnlyHint: true}
@@ -95,9 +95,10 @@ func (s *webservice) mcpHandler() http.Handler {
 }
 
 func (s *webservice) mcpOverview(ctx context.Context, req *mcp.CallToolRequest, _ overviewInput) (*mcp.CallToolResult, overviewOutput, error) {
+	owner := mcpUser(req)
 	var out overviewOutput
 	for _, cat := range notesmeta.Categories {
-		counts, err := s.app.Notes.SubcategoryCounts(s.ownerID, cat.Slug)
+		counts, err := s.app.Notes.SubcategoryCounts(owner, cat.Slug)
 		if err != nil {
 			return nil, out, err
 		}
@@ -115,24 +116,25 @@ func (s *webservice) mcpOverview(ctx context.Context, req *mcp.CallToolRequest, 
 	}
 
 	var err error
-	if out.Tags, err = s.app.Notes.FindAllTagsForOwner(s.ownerID); err != nil {
+	if out.Tags, err = s.app.Notes.FindAllTagsForOwner(owner); err != nil {
 		return nil, out, err
 	}
-	if out.People, err = s.app.Notes.FindAllPeople(s.ownerID); err != nil {
+	if out.People, err = s.app.Notes.FindAllPeople(owner); err != nil {
 		return nil, out, err
 	}
 	return nil, out, nil
 }
 
 func (s *webservice) mcpListNotes(ctx context.Context, req *mcp.CallToolRequest, in listNotesInput) (*mcp.CallToolResult, listNotesOutput, error) {
+	owner := mcpUser(req)
 	var (
 		notes []note.Note
 		err   error
 	)
 	if in.Person != "" {
-		notes, err = s.app.Notes.FindAllByPerson(s.ownerID, strings.TrimPrefix(in.Person, "@"))
+		notes, err = s.app.Notes.FindAllByPerson(owner, strings.TrimPrefix(in.Person, "@"))
 	} else {
-		notes, err = s.app.Notes.FindAll(s.ownerID)
+		notes, err = s.app.Notes.FindAll(owner)
 	}
 	if err != nil {
 		return nil, listNotesOutput{}, err
@@ -175,12 +177,19 @@ func (s *webservice) mcpListNotes(ctx context.Context, req *mcp.CallToolRequest,
 }
 
 func (s *webservice) mcpGetNote(ctx context.Context, req *mcp.CallToolRequest, in getNoteInput) (*mcp.CallToolResult, mcpNote, error) {
+	owner := mcpUser(req)
 	n, err := s.app.Notes.FindOne(in.ID)
-	if err != nil || n.Owner != s.ownerID {
+	if err != nil || n.Owner != owner {
 		return nil, mcpNote{}, fmt.Errorf("note %q not found", in.ID)
 	}
 	mn, err := s.toMCPNote(n)
 	return nil, mn, err
+}
+
+// mcpUser returns the user id from the verified OAuth access token. The
+// bearer middleware guarantees it is present and non-empty.
+func mcpUser(req *mcp.CallToolRequest) string {
+	return req.Extra.TokenInfo.UserID
 }
 
 func (s *webservice) toMCPNote(n note.Note) (mcpNote, error) {

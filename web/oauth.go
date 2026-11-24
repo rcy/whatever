@@ -2,7 +2,7 @@ package web
 
 // A minimal OAuth 2.1 authorization server so MCP clients (claude.ai, Claude
 // Code, ...) can access /mcp. Users authenticate with the existing Google
-// login; only OWNER_ID may authorize. Clients register dynamically (RFC 7591)
+// login; any Google user may authorize access to their own notes. Clients register dynamically (RFC 7591)
 // and must use PKCE (S256).
 //
 // Everything is stateless: client ids, authorization codes, access tokens and
@@ -42,14 +42,13 @@ const (
 type oauthServer struct {
 	key       []byte
 	baseURL   string
-	ownerID   string
 	usedCodes sync.Map // nonce -> expiry time.Time
 }
 
-func newOAuthServer(sessionSecret, baseURL, ownerID string) *oauthServer {
+func newOAuthServer(sessionSecret, baseURL string) *oauthServer {
 	mac := hmac.New(sha256.New, []byte(sessionSecret))
 	mac.Write([]byte("whatever oauth v1"))
-	return &oauthServer{key: mac.Sum(nil), baseURL: baseURL, ownerID: ownerID}
+	return &oauthServer{key: mac.Sum(nil), baseURL: baseURL}
 }
 
 func (o *oauthServer) resourceURL() string { return o.baseURL + "/mcp" }
@@ -168,7 +167,7 @@ func (o *oauthServer) authServerMetadata(w http.ResponseWriter, r *http.Request)
 func (o *oauthServer) requireToken(next http.Handler) http.Handler {
 	verify := func(ctx context.Context, token string, r *http.Request) (*auth.TokenInfo, error) {
 		var grant oauthGrant
-		if err := o.parse("access", token, &grant); err != nil || grant.User != o.ownerID {
+		if err := o.parse("access", token, &grant); err != nil || grant.User == "" {
 			return nil, auth.ErrInvalidToken
 		}
 		return &auth.TokenInfo{UserID: grant.User, Scopes: []string{oauthScope}, Expiration: time.Unix(grant.Exp, 0)}, nil
@@ -270,7 +269,7 @@ func (s *webservice) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := getUserInfo(r)
-	if user.Id != o.ownerID {
+	if user.Id == "" {
 		redirectWithError(w, r, redirectURI, state, "access_denied")
 		return
 	}
@@ -326,7 +325,7 @@ func (s *webservice) oauthAuthorizeDecision(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "consent expired; start again from your app", http.StatusBadRequest)
 		return
 	}
-	if user := getUserInfo(r); user.Id != c.User || c.User != o.ownerID {
+	if user := getUserInfo(r); user.Id != c.User {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -416,7 +415,7 @@ func (o *oauthServer) token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user != o.ownerID {
+	if user == "" {
 		oauthError(w, http.StatusBadRequest, "invalid_grant", "user not authorized")
 		return
 	}

@@ -88,7 +88,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		baseURL:      baseURL,
 		webhookToken: cfg.WebhookToken,
 		ownerID:      cfg.OwnerID,
-		oauth:        newOAuthServer(cfg.SessionSecret, baseURL, cfg.OwnerID),
+		oauth:        newOAuthServer(cfg.SessionSecret, baseURL),
 	}
 
 	r := chi.NewRouter()
