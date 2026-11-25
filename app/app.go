@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/rcy/evoke"
@@ -11,6 +12,7 @@ import (
 	"github.com/rcy/whatever/commands"
 	"github.com/rcy/whatever/events"
 	"github.com/rcy/whatever/projections/note"
+	appriver "github.com/rcy/whatever/river"
 	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
 	"github.com/rcy/whatever/workers/webhook"
@@ -19,6 +21,7 @@ import (
 type App struct {
 	Commander     evoke.CommandSender
 	Notes         *note.Projection
+	River         *appriver.Client
 	EventDebugger interface {
 		DebugEvents() ([]evoke.RecordedEvent, error)
 	}
@@ -130,9 +133,16 @@ func New(filename string) (*App, error) {
 		return nil, err
 	}
 
+	dataDir := filepath.Dir(filename)
+	riverClient, err := appriver.New(dataDir)
+	if err != nil {
+		return nil, fmt.Errorf("river: %w", err)
+	}
+
 	return &App{
 		Commander:     commandBus,
 		Notes:         noteProjection,
+		River:         riverClient,
 		EventDebugger: eventStore,
 		classify:      classifyWorker,
 	}, nil

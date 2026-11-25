@@ -46,6 +46,10 @@ func (c *ServeCmd) Run(app *app.App) error {
 		Handler: mux,
 	}
 
+	if err := app.River.Start(context.Background()); err != nil {
+		return fmt.Errorf("river start: %w", err)
+	}
+
 	go func() {
 		fmt.Printf("Listening on http://localhost:%s\n", c.Port)
 		err := srv.ListenAndServe()
@@ -59,14 +63,19 @@ func (c *ServeCmd) Run(app *app.App) error {
 	<-signalCtx.Done()
 	fmt.Println("Got signal")
 
-	fmt.Println("Shutting down server...")
+	fmt.Println("Shutting down...")
 
 	shutdownCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	if err := app.River.Stop(shutdownCtx); err != nil {
+		log.Printf("river stop: %v", err)
+	}
+
 	err = srv.Shutdown(shutdownCtx)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Shutting down server...done")
+	fmt.Println("Shutting down...done")
 
 	return nil
 }

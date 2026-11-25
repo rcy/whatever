@@ -346,3 +346,13 @@ func (s *webservice) logoutHandler(w http.ResponseWriter, r *http.Request) {
 func getUserInfo(r *http.Request) googleoauth.Userinfo {
 	return r.Context().Value(UserContextKey).(googleoauth.Userinfo)
 }
+
+func (s *webservice) ownerOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if getUserInfo(r).Id != s.ownerID {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

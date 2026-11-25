@@ -99,6 +99,9 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	r.Get("/logout", svc.logoutHandler)
 	r.Post("/webhook/{source}", svc.postWebhookNote)
 
+	r.With(svc.authMiddleware, svc.ownerOnly).Handle("/river/*", app.River.UIHandler())
+	r.With(svc.authMiddleware, svc.ownerOnly).Handle("/river", app.River.UIHandler())
+
 	// MCP server, protected by our own OAuth authorization server
 	r.With(cors).Handle("/mcp", svc.mcpHandler())
 	r.With(cors).Handle("/.well-known/oauth-protected-resource", svc.oauth.protectedResourceMetadata())
