@@ -16,12 +16,15 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/rcy/disco v0.2.2
 	github.com/rcy/evoke v0.2.1
+	github.com/riverqueue/river v0.51.2
+	github.com/riverqueue/river/riverdriver/riversqlite v0.51.2
 	github.com/starfederation/datastar-go v1.1.0
 	golang.org/x/oauth2 v0.35.0
 	google.golang.org/api v0.248.0
 	maragu.dev/gomponents v1.2.0
 	modernc.org/sqlite v1.62.0
 	mvdan.cc/xurls/v2 v2.6.0
+	riverqueue.com/riverui v0.23.0
 )
 
 require (
@@ -68,9 +71,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/apiframe v0.0.0-20251229202423-2b52ce1c482e // indirect
-	github.com/riverqueue/river v0.51.2 // indirect
 	github.com/riverqueue/river/riverdriver v0.51.2 // indirect
-	github.com/riverqueue/river/riverdriver/riversqlite v0.51.2 // indirect
 	github.com/riverqueue/river/rivershared v0.51.2 // indirect
 	github.com/riverqueue/river/rivertype v0.51.2 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
@@ -90,7 +91,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
@@ -102,7 +102,6 @@ require (
 	modernc.org/libc v1.80.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	riverqueue.com/riverui v0.23.0 // indirect
 )
 
 tool github.com/air-verse/air
