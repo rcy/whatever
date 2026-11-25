@@ -13,6 +13,7 @@ import (
 	"github.com/rcy/whatever/projections/note"
 	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
+	"github.com/rcy/whatever/workers/webhook"
 )
 
 type App struct {
@@ -120,6 +121,9 @@ func New(filename string) (*App, error) {
 
 	classifyWorker := classify.NewWorker(commandBus)
 	eventBus.Subscribe(events.NoteCreated{}, classifyWorker)
+
+	webhookWorker := webhook.NewWorker(commandBus)
+	eventBus.Subscribe(events.WebhookReceived{}, webhookWorker)
 
 	err = migrateOwnerlessNotes(noteProjection, commandBus)
 	if err != nil {
