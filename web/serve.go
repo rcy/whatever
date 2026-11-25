@@ -127,6 +127,7 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 		r.Post("/capture/notes/{noteID}/star", svc.postCaptureStar)
 		r.Post("/capture/notes/{noteID}/tags", svc.postAddNoteTag)
 		r.Post("/capture/notes/{noteID}/tags/{tag}/remove", svc.postRemoveNoteTag)
+		r.Post("/capture/notes/delete-selected", svc.postCaptureDeleteNotes)
 
 		r.Get("/note/{id}", svc.showNote)
 		r.Post("/note/{id}/edit", svc.postEditNote)

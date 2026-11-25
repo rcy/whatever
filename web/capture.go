@@ -76,7 +76,7 @@ func capturePage(body g.Node) g.Node {
 			h.StyleEl(captureStyles),
 		),
 		h.Body(
-			g.Attr("data-signals", `{"activeNote":"","editNote":""}`),
+			g.Attr("data-signals", `{"activeNote":"","editNote":"","selectedCount":0}`),
 			body,
 		),
 	)
@@ -258,6 +258,7 @@ func (s *webservice) captureReferenceIndex(w http.ResponseWriter, r *http.Reques
 	capturePage(g.Group{
 		captureNavWithRequest(r, "/capture/reference"),
 		tagHeader(allTags, selectedTag),
+		deleteBar(),
 		captureNoteList(noteList, tagMap),
 	}).Render(w)
 }
@@ -431,6 +432,24 @@ func (s *webservice) tagHeaderEl(owner, selected string) (g.Node, error) {
 	return tagHeader(tags, selected), nil
 }
 
+func deleteBar() g.Node {
+	return h.Div(
+		h.Class("invisible"),
+		g.Attr("data-class", `{"invisible": $selectedCount === 0}`),
+		h.Form(
+			h.ID("delete-form"),
+			h.Method("POST"),
+			h.Action("/capture/notes/delete-selected"),
+			h.Style("padding:0.5em 1em; margin:0"),
+			h.Button(h.Type("submit"), h.Style("color:red"),
+				g.Text("Delete "),
+				h.Span(g.Attr("data-text", "$selectedCount")),
+				g.Text(" notes"),
+			),
+		),
+	)
+}
+
 func captureNoteList(noteList []note.Note, tagMap map[uuid.UUID][]string) g.Node {
 	return h.Div(h.Class("note-list"),
 		g.Map(noteList, func(n note.Note) g.Node {
@@ -460,6 +479,13 @@ func captureNoteItem(n note.Note, tags []string) g.Node {
 		h.Class("note-item"),
 		g.Attr("data-signals", fmt.Sprintf(`{"%s":""}`, sig)),
 		h.Div(h.Style("display:flex; flex-wrap:wrap; gap:0.25em; align-items:baseline"),
+			h.Input(
+				h.Type("checkbox"),
+				g.Attr("form", "delete-form"),
+				h.Name("noteIDs"),
+				h.Value(n.ID.String()),
+				g.Attr("data-on:change", "$selectedCount += evt.target.checked ? 1 : -1"),
+			),
 			h.Span(linkifyNode(n.Text)),
 			g.Map(tags, func(tag string) g.Node {
 				return h.Button(
@@ -587,6 +613,18 @@ func captureTaskSection(heading string, noteList []note.Note, showStar bool) g.N
 			}),
 		),
 	)
+}
+
+func (s *webservice) postCaptureDeleteNotes(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	for _, id := range r.Form["noteIDs"] {
+		noteID, err := uuid.Parse(id)
+		if err != nil {
+			continue
+		}
+		s.app.Commander.Send(commands.DeleteNote{NoteID: noteID})
+	}
+	http.Redirect(w, r, "/capture/reference", http.StatusSeeOther)
 }
 
 func (s *webservice) postAddNoteTag(w http.ResponseWriter, r *http.Request) {
