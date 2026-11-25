@@ -5,45 +5,42 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/openai/openai-go"
 	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/events"
+	"github.com/riverqueue/river"
 )
 
-type Worker struct {
+// JobArgs are the arguments for a classify River job.
+type JobArgs struct {
+	NoteID uuid.UUID `json:"note_id"`
+	Text   string    `json:"text"`
+}
+
+func (JobArgs) Kind() string { return "classify" }
+
+// JobWorker is a River worker that classifies notes using an LLM.
+type JobWorker struct {
+	river.WorkerDefaults[JobArgs]
 	cmdSender evoke.CommandSender
 }
 
-func NewWorker(cmdSender evoke.CommandSender) *Worker {
-	return &Worker{cmdSender: cmdSender}
+func NewJobWorker(cmdSender evoke.CommandSender) *JobWorker {
+	return &JobWorker{cmdSender: cmdSender}
 }
 
-func (w *Worker) Handle(e evoke.Event, replay bool) error {
-	evt, ok := e.(events.NoteCreated)
-	if !ok {
-		return fmt.Errorf("not a NoteCreated event")
+func (w *JobWorker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
+	category, err := Categorize(job.Args.Text)
+	if err != nil {
+		return err
 	}
 
-	if evt.Category != "inbox" {
-		return nil
-	}
-
-	go func() {
-		category, err := Categorize(evt.Text)
-		if err != nil {
-			fmt.Println("classify error:", err)
-			return
-		}
-
-		w.cmdSender.MustSend(commands.SetNoteCategory{
-			NoteID:   evt.NoteID,
-			Category: category,
-			Actor:    "ai",
-		})
-	}()
-
-	return nil
+	return w.cmdSender.Send(commands.SetNoteCategory{
+		NoteID:   job.Args.NoteID,
+		Category: category,
+		Actor:    "ai",
+	})
 }
 
 // Categorize calls gpt-4o-mini and returns "task" or "reference".

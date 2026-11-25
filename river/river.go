@@ -23,10 +23,11 @@ type Client struct {
 
 // New creates a River client backed by a SQLite database stored next to
 // dataDir. The database is created if it doesn't exist, and migrations
-// are applied automatically.
-func New(dataDir string) (*Client, error) {
+// are applied automatically. The caller provides the workers bundle with
+// all job workers already registered.
+func New(dataDir string, workers *river.Workers) (*Client, error) {
 	dbPath := filepath.Join(dataDir, "river.db")
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, fmt.Errorf("river: open db: %w", err)
 	}
@@ -45,9 +46,6 @@ func New(dataDir string) (*Client, error) {
 		db.Close()
 		return nil, fmt.Errorf("river: migrate: %w", err)
 	}
-
-	workers := river.NewWorkers()
-	river.AddWorker(workers, &pingWorker{})
 
 	riverClient, err := river.NewClient(driver, &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -78,18 +76,9 @@ func New(dataDir string) (*Client, error) {
 	}, nil
 }
 
-// pingArgs is a no-op job used to satisfy River's requirement that at least
-// one worker is registered.
-type pingArgs struct{}
-
-func (pingArgs) Kind() string { return "ping" }
-
-type pingWorker struct {
-	river.WorkerDefaults[pingArgs]
-}
-
-func (w *pingWorker) Work(ctx context.Context, job *river.Job[pingArgs]) error {
-	return nil
+func (c *Client) Insert(ctx context.Context, args river.JobArgs, opts *river.InsertOpts) error {
+	_, err := c.client.Insert(ctx, args, opts)
+	return err
 }
 
 func (c *Client) UIHandler() http.Handler {

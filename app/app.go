@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
 	"github.com/rcy/whatever/workers/webhook"
+	"github.com/riverqueue/river"
 )
 
 type App struct {
@@ -25,7 +27,6 @@ type App struct {
 	EventDebugger interface {
 		DebugEvents() ([]evoke.RecordedEvent, error)
 	}
-	classify *classify.Worker
 }
 
 func New(filename string) (*App, error) {
@@ -122,9 +123,6 @@ func New(filename string) (*App, error) {
 	enrichWorker := enrich.NewWorker(commandBus)
 	eventBus.Subscribe(events.NoteEnrichmentRequested{}, enrichWorker)
 
-	classifyWorker := classify.NewWorker(commandBus)
-	eventBus.Subscribe(events.NoteCreated{}, classifyWorker)
-
 	webhookWorker := webhook.NewWorker(commandBus)
 	eventBus.Subscribe(events.WebhookReceived{}, webhookWorker)
 
@@ -133,19 +131,40 @@ func New(filename string) (*App, error) {
 		return nil, err
 	}
 
+	// River job queue
+	workers := river.NewWorkers()
+	river.AddWorker(workers, classify.NewJobWorker(commandBus))
+
 	dataDir := filepath.Dir(filename)
-	riverClient, err := appriver.New(dataDir)
+	riverClient, err := appriver.New(dataDir, workers)
 	if err != nil {
 		return nil, fmt.Errorf("river: %w", err)
 	}
+
+	// Enqueue classify jobs for new inbox notes
+	eventBus.Subscribe(events.NoteCreated{}, &classifyEnqueuer{riverClient: riverClient})
 
 	return &App{
 		Commander:     commandBus,
 		Notes:         noteProjection,
 		River:         riverClient,
 		EventDebugger: eventStore,
-		classify:      classifyWorker,
 	}, nil
+}
+
+type classifyEnqueuer struct {
+	riverClient *appriver.Client
+}
+
+func (e *classifyEnqueuer) Handle(ev evoke.Event, replay bool) error {
+	evt := ev.(events.NoteCreated)
+	if evt.Category != "inbox" {
+		return nil
+	}
+	return e.riverClient.Insert(context.Background(), classify.JobArgs{
+		NoteID: evt.NoteID,
+		Text:   evt.Text,
+	}, nil)
 }
 
 // One time migration to add an owner to notes without one
