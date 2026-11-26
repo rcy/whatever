@@ -120,9 +120,6 @@ func New(filename string) (*App, error) {
 	eventStore.RegisterPublisher(eventBus)
 
 	// live-only, async workers
-	enrichWorker := enrich.NewWorker(commandBus)
-	eventBus.Subscribe(events.NoteEnrichmentRequested{}, enrichWorker)
-
 	webhookWorker := webhook.NewWorker(commandBus)
 	eventBus.Subscribe(events.WebhookReceived{}, webhookWorker)
 
@@ -143,6 +140,8 @@ func New(filename string) (*App, error) {
 
 	// Enqueue classify jobs for new inbox notes
 	eventBus.Subscribe(events.NoteCreated{}, &classifyEnqueuer{riverClient: riverClient})
+	// Enqueue enrich jobs for enrichment requests
+	eventBus.Subscribe(events.NoteEnrichmentRequested{}, &enrichEnqueuer{riverClient: riverClient})
 
 	return &App{
 		Commander:     commandBus,
@@ -162,6 +161,18 @@ func (e *classifyEnqueuer) Handle(ev evoke.Event, replay bool) error {
 		return nil
 	}
 	return e.riverClient.Insert(context.Background(), classify.JobArgs{
+		NoteID: evt.NoteID,
+		Text:   evt.Text,
+	}, nil)
+}
+
+type enrichEnqueuer struct {
+	riverClient *appriver.Client
+}
+
+func (e *enrichEnqueuer) Handle(ev evoke.Event, replay bool) error {
+	evt := ev.(events.NoteEnrichmentRequested)
+	return e.riverClient.Insert(context.Background(), enrich.JobArgs{
 		NoteID: evt.NoteID,
 		Text:   evt.Text,
 	}, nil)

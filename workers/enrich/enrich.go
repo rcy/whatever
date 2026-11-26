@@ -1,55 +1,50 @@
 package enrich
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/alfarisi/urlmeta"
+	"github.com/google/uuid"
 	"github.com/rcy/evoke"
 	"github.com/rcy/whatever/commands"
-	"github.com/rcy/whatever/events"
+	"github.com/riverqueue/river"
 )
 
-type worker struct {
+type JobArgs struct {
+	NoteID uuid.UUID `json:"note_id"`
+	Text   string    `json:"text"`
+}
+
+func (JobArgs) Kind() string { return "enrich" }
+
+type JobWorker struct {
+	river.WorkerDefaults[JobArgs]
 	cmdSender evoke.CommandSender
 }
 
-func NewWorker(cmdSender evoke.CommandSender) *worker {
-	return &worker{cmdSender: cmdSender}
+func NewJobWorker(cmdSender evoke.CommandSender) *JobWorker {
+	return &JobWorker{cmdSender: cmdSender}
 }
 
-func (w worker) Handle(e evoke.Event, replay bool) error {
-	evt, ok := e.(events.NoteEnrichmentRequested)
-	if !ok {
-		return fmt.Errorf("not a NoteEnrichmentRequested event")
+func (w *JobWorker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
+	meta, err := urlmeta.Extract(job.Args.Text)
+	if err != nil {
+		return w.cmdSender.Send(commands.FailNoteEnrichment{
+			NoteID:   job.Args.NoteID,
+			FailedAt: time.Now(),
+		})
 	}
 
-	go func() {
-		fmt.Println("enriching...", evt)
+	var thumb string
+	if meta.OEmbed != nil {
+		thumb = meta.OEmbed.ThumbnailURL
+	}
 
-		meta, err := urlmeta.Extract(evt.Text)
-		if err != nil {
-			w.cmdSender.MustSend(commands.FailNoteEnrichment{
-				NoteID:   evt.NoteID,
-				FailedAt: time.Now(),
-			})
-			return
-		}
-
-		var thumb string
-		if meta.OEmbed != nil {
-			thumb = meta.OEmbed.ThumbnailURL
-		}
-
-		w.cmdSender.MustSend(commands.CompleteNoteEnrichment{
-			NoteID:      evt.NoteID,
-			CompletedAt: time.Now(),
-			Title:       meta.Title,
-			Thumb:       thumb,
-		})
-
-		fmt.Println("enriching...done", evt)
-	}()
-
-	return nil
+	return w.cmdSender.Send(commands.CompleteNoteEnrichment{
+		NoteID:      job.Args.NoteID,
+		CompletedAt: time.Now(),
+		Title:       meta.Title,
+		Thumb:       thumb,
+	})
 }
