@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
@@ -18,12 +20,14 @@ import (
 	"github.com/rcy/whatever/workers/enrich"
 	"github.com/rcy/whatever/workers/webhook"
 	"github.com/riverqueue/river"
+	"golang.org/x/oauth2"
 )
 
 type App struct {
 	Commander     evoke.CommandSender
 	Notes         *note.Projection
 	River         *appriver.Client
+	DataDir       string
 	EventDebugger interface {
 		DebugEvents() ([]evoke.RecordedEvent, error)
 	}
@@ -131,6 +135,7 @@ func New(filename string) (*App, error) {
 	// River job queue
 	workers := river.NewWorkers()
 	river.AddWorker(workers, classify.NewJobWorker(commandBus))
+	river.AddWorker(workers, enrich.NewJobWorker(commandBus))
 
 	dataDir := filepath.Dir(filename)
 	riverClient, err := appriver.New(dataDir, workers)
@@ -147,6 +152,7 @@ func New(filename string) (*App, error) {
 		Commander:     commandBus,
 		Notes:         noteProjection,
 		River:         riverClient,
+		DataDir:       dataDir,
 		EventDebugger: eventStore,
 	}, nil
 }
@@ -176,6 +182,42 @@ func (e *enrichEnqueuer) Handle(ev evoke.Event, replay bool) error {
 		NoteID: evt.NoteID,
 		Text:   evt.Text,
 	}, nil)
+}
+
+func (a *App) youtubeTokenDir() string {
+	return filepath.Join(a.DataDir, "youtube_tokens")
+}
+
+func (a *App) youtubeTokenPath(userID string) string {
+	return filepath.Join(a.youtubeTokenDir(), userID+".json")
+}
+
+func (a *App) SaveYouTubeToken(userID string, token *oauth2.Token) error {
+	if err := os.MkdirAll(a.youtubeTokenDir(), 0700); err != nil {
+		return err
+	}
+	data, err := json.Marshal(token)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(a.youtubeTokenPath(userID), data, 0600)
+}
+
+func (a *App) LoadYouTubeToken(userID string) (*oauth2.Token, error) {
+	data, err := os.ReadFile(a.youtubeTokenPath(userID))
+	if err != nil {
+		return nil, err
+	}
+	var token oauth2.Token
+	if err := json.Unmarshal(data, &token); err != nil {
+		return nil, err
+	}
+	return &token, nil
+}
+
+func (a *App) HasYouTubeToken(userID string) bool {
+	_, err := os.Stat(a.youtubeTokenPath(userID))
+	return err == nil
 }
 
 // One time migration to add an owner to notes without one

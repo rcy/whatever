@@ -697,9 +697,17 @@ func (s *webservice) postRemoveNoteTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *webservice) settingsIndex(w http.ResponseWriter, r *http.Request) {
+	userID := getUserInfo(r).Id
+	hasYouTube := s.app.HasYouTubeToken(userID)
 	capturePage(g.Group{
 		captureNavWithRequest(r, "/capture/tasks"),
-		h.Div(h.Style("padding:1em"),
+		h.Div(h.Style("padding:1em; display:flex; flex-direction:column; gap:0.5em"),
+			g.If(hasYouTube,
+				h.Span(g.Text("YouTube: connected")),
+			),
+			g.If(!hasYouTube,
+				h.A(h.Href("/youtube/connect"), g.Text("Connect YouTube")),
+			),
 			h.A(h.Href("/logout"), g.Text("logout")),
 		),
 	}).Render(w)
