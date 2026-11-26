@@ -699,6 +699,7 @@ func (s *webservice) postRemoveNoteTag(w http.ResponseWriter, r *http.Request) {
 func (s *webservice) settingsIndex(w http.ResponseWriter, r *http.Request) {
 	userID := getUserInfo(r).Id
 	hasYouTube := s.app.HasYouTubeToken(userID)
+	hasBsky := s.app.HasBlueskyCredentials(userID)
 	capturePage(g.Group{
 		captureNavWithRequest(r, "/capture/tasks"),
 		h.Div(h.Style("padding:1em; display:flex; flex-direction:column; gap:0.5em"),
@@ -711,6 +712,19 @@ func (s *webservice) settingsIndex(w http.ResponseWriter, r *http.Request) {
 			g.If(!hasYouTube,
 				h.A(h.Href("/youtube/connect"), g.Text("Connect YouTube")),
 			),
+			g.If(hasBsky, h.Div(h.Style("display:flex; gap:1em; align-items:center"),
+				h.Span(g.Text("Bluesky: connected")),
+				h.Form(h.Method("POST"), h.Action("/bsky/sync"), h.Style("display:inline"),
+					h.Button(h.Type("submit"), g.Text("sync now")),
+				),
+			)),
+			g.If(!hasBsky, h.Form(h.Method("POST"), h.Action("/bsky/connect"),
+				h.Style("display:flex; flex-direction:column; gap:0.25em; max-width:20em"),
+				h.Span(g.Text("Connect Bluesky")),
+				h.Input(h.Name("handle"), h.Placeholder("handle (e.g. you.bsky.social)"), h.Style("font-size:16px")),
+				h.Input(h.Name("app_password"), h.Type("password"), h.Placeholder("app password"), h.Style("font-size:16px")),
+				h.Button(h.Type("submit"), g.Text("connect")),
+			)),
 			h.A(h.Href("/logout"), g.Text("logout")),
 		),
 	}).Render(w)

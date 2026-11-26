@@ -104,6 +104,8 @@ func Server(app *app.App, cfg Config) (*chi.Mux, error) {
 	r.With(svc.authMiddleware).Get("/youtube/connect", svc.youtubeConnect)
 	r.With(svc.authMiddleware).Get("/youtube/callback", svc.youtubeCallback)
 	r.With(svc.authMiddleware).Post("/youtube/sync", svc.youtubeSync)
+	r.With(svc.authMiddleware).Post("/bsky/connect", svc.bskyConnect)
+	r.With(svc.authMiddleware).Post("/bsky/sync", svc.bskySync)
 
 	// MCP server, protected by our own OAuth authorization server
 	r.With(cors).Handle("/mcp", svc.mcpHandler())

@@ -20,6 +20,7 @@ import (
 	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
 	"github.com/rcy/whatever/workers/webhook"
+	"github.com/rcy/whatever/workers/bskysync"
 	"github.com/rcy/whatever/workers/youtubesync"
 	"github.com/riverqueue/river"
 	"golang.org/x/oauth2"
@@ -154,6 +155,7 @@ func New(filename string, cfg Config) (*App, error) {
 		Scopes:       []string{"https://www.googleapis.com/auth/youtube.readonly"},
 	}
 	river.AddWorker(workers, youtubesync.NewJobWorker(commandBus, ytOAuthConfig, dataDir))
+	river.AddWorker(workers, bskysync.NewJobWorker(commandBus, dataDir))
 
 	ytSyncJob := river.NewPeriodicJob(
 		river.PeriodicInterval(6*time.Hour),
@@ -163,7 +165,15 @@ func New(filename string, cfg Config) (*App, error) {
 		&river.PeriodicJobOpts{ID: "youtube_sync"},
 	)
 
-	riverClient, err := appriver.New(dataDir, workers, ytSyncJob)
+	bskySyncJob := river.NewPeriodicJob(
+		river.PeriodicInterval(6*time.Hour),
+		func() (river.JobArgs, *river.InsertOpts) {
+			return bskysync.JobArgs{}, nil
+		},
+		&river.PeriodicJobOpts{ID: "bsky_sync"},
+	)
+
+	riverClient, err := appriver.New(dataDir, workers, ytSyncJob, bskySyncJob)
 	if err != nil {
 		return nil, fmt.Errorf("river: %w", err)
 	}
@@ -242,6 +252,44 @@ func (a *App) LoadYouTubeToken(userID string) (*oauth2.Token, error) {
 
 func (a *App) HasYouTubeToken(userID string) bool {
 	_, err := os.Stat(a.youtubeTokenPath(userID))
+	return err == nil
+}
+
+type BlueskyCredentials struct {
+	Handle      string `json:"handle"`
+	AppPassword string `json:"app_password"`
+}
+
+func (a *App) bskyCredPath(userID string) string {
+	return filepath.Join(a.DataDir, "bsky_tokens", userID+".json")
+}
+
+func (a *App) SaveBlueskyCredentials(userID string, creds BlueskyCredentials) error {
+	dir := filepath.Join(a.DataDir, "bsky_tokens")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	data, err := json.Marshal(creds)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(a.bskyCredPath(userID), data, 0600)
+}
+
+func (a *App) LoadBlueskyCredentials(userID string) (*BlueskyCredentials, error) {
+	data, err := os.ReadFile(a.bskyCredPath(userID))
+	if err != nil {
+		return nil, err
+	}
+	var creds BlueskyCredentials
+	if err := json.Unmarshal(data, &creds); err != nil {
+		return nil, err
+	}
+	return &creds, nil
+}
+
+func (a *App) HasBlueskyCredentials(userID string) bool {
+	_, err := os.Stat(a.bskyCredPath(userID))
 	return err == nil
 }
 
