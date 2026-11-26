@@ -25,7 +25,7 @@ type Client struct {
 // dataDir. The database is created if it doesn't exist, and migrations
 // are applied automatically. The caller provides the workers bundle with
 // all job workers already registered.
-func New(dataDir string, workers *river.Workers) (*Client, error) {
+func New(dataDir string, workers *river.Workers, periodicJobs ...*river.PeriodicJob) (*Client, error) {
 	dbPath := filepath.Join(dataDir, "river.db")
 	db, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(5000)")
 	if err != nil {
@@ -51,7 +51,8 @@ func New(dataDir string, workers *river.Workers) (*Client, error) {
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: 2},
 		},
-		Workers: workers,
+		Workers:      workers,
+		PeriodicJobs: periodicJobs,
 	})
 	if err != nil {
 		db.Close()

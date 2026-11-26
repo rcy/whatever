@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rcy/evoke"
@@ -19,8 +20,10 @@ import (
 	"github.com/rcy/whatever/workers/classify"
 	"github.com/rcy/whatever/workers/enrich"
 	"github.com/rcy/whatever/workers/webhook"
+	"github.com/rcy/whatever/workers/youtubesync"
 	"github.com/riverqueue/river"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 type App struct {
@@ -33,7 +36,12 @@ type App struct {
 	}
 }
 
-func New(filename string) (*App, error) {
+type Config struct {
+	GoogleClientID     string
+	GoogleClientSecret string
+}
+
+func New(filename string, cfg Config) (*App, error) {
 	if filename == "" {
 		return nil, errors.New("filename is empty")
 	}
@@ -133,12 +141,29 @@ func New(filename string) (*App, error) {
 	}
 
 	// River job queue
+	dataDir := filepath.Dir(filename)
+
 	workers := river.NewWorkers()
 	river.AddWorker(workers, classify.NewJobWorker(commandBus))
 	river.AddWorker(workers, enrich.NewJobWorker(commandBus))
 
-	dataDir := filepath.Dir(filename)
-	riverClient, err := appriver.New(dataDir, workers)
+	ytOAuthConfig := &oauth2.Config{
+		ClientID:     cfg.GoogleClientID,
+		ClientSecret: cfg.GoogleClientSecret,
+		Endpoint:     google.Endpoint,
+		Scopes:       []string{"https://www.googleapis.com/auth/youtube.readonly"},
+	}
+	river.AddWorker(workers, youtubesync.NewJobWorker(commandBus, ytOAuthConfig, dataDir))
+
+	ytSyncJob := river.NewPeriodicJob(
+		river.PeriodicInterval(6*time.Hour),
+		func() (river.JobArgs, *river.InsertOpts) {
+			return youtubesync.JobArgs{}, nil
+		},
+		&river.PeriodicJobOpts{ID: "youtube_sync"},
+	)
+
+	riverClient, err := appriver.New(dataDir, workers, ytSyncJob)
 	if err != nil {
 		return nil, fmt.Errorf("river: %w", err)
 	}

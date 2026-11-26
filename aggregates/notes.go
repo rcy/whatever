@@ -65,11 +65,16 @@ func (a *noteAggregate) HandleCommand(cmd evoke.Command) ([]evoke.Event, error) 
 			return nil, fmt.Errorf("subcategory cannot be empty")
 		}
 
+		createdAt := c.CreatedAt
+		if createdAt.IsZero() {
+			createdAt = time.Now()
+		}
+
 		eventList := []evoke.Event{
 			events.NoteCreated{
 				Owner:       c.Owner,
 				NoteID:      aggregateID,
-				CreatedAt:   time.Now(),
+				CreatedAt:   createdAt,
 				Text:        text,
 				Category:    c.Category,
 				Subcategory: c.Subcategory,

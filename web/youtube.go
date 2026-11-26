@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/rcy/whatever/workers/youtubesync"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -76,5 +77,15 @@ func (s *webservice) youtubeCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.Redirect(w, r, "/settings", http.StatusSeeOther)
+}
+
+func (s *webservice) youtubeSync(w http.ResponseWriter, r *http.Request) {
+	userID := getUserInfo(r).Id
+	err := s.app.River.Insert(r.Context(), youtubesync.JobArgs{UserID: userID}, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }

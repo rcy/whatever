@@ -17,7 +17,10 @@ func main() {
 	if !ok {
 		log.Fatal("EVOKE_FILE not set")
 	}
-	a, err := app.New(filename)
+	a, err := app.New(filename, app.Config{
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+	})
 	if err != nil {
 		log.Fatal(err)
 	}

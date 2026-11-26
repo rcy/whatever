@@ -12,6 +12,7 @@ type CreateNote struct {
 	Text        string
 	Category    string
 	Subcategory string
+	CreatedAt   time.Time
 }
 
 func (c CreateNote) AggregateID() uuid.UUID { return c.NoteID }
